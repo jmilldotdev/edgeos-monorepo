@@ -1253,14 +1253,7 @@ def test_open_checkout_buyer_receives_the_current_flow_primary_role(
         buyer=BuyerInfo(
             email="open-recipient@test.com", first_name="Open", last_name="Buyer"
         ),
-        recipients=[
-            {
-                "recipient_key": "guest",
-                "name": "Guest Recipient",
-                "profile_snapshot": {"accessibility": "aisle"},
-            }
-        ],
-        products=[ProductLine(product_id=product.id, recipient_key="guest")],
+        products=[ProductLine(product_id=product.id)],
     )
 
     with patch("app.services.simplefi.get_simplefi_client") as get_client:
@@ -1285,9 +1278,9 @@ def test_open_checkout_buyer_receives_the_current_flow_primary_role(
         select(PaymentProducts).where(PaymentProducts.payment_id == payment.id)
     ).one()
     assert payment.buyer_human_id is not None
-    assert recipient.recipient_key == "guest"
     assert recipient.human_id == payment.buyer_human_id
-    assert recipient.profile_snapshot == {"accessibility": "aisle"}
+    assert request.products[0].recipient_key is None
+    assert request.recipients == []
     assert recipient.category_id is not None
     assert line.payment_recipient_id == recipient.id
     assert line.attendee_id is None
@@ -1296,6 +1289,6 @@ def test_open_checkout_buyer_receives_the_current_flow_primary_role(
     payments_crud.approve_payment(db, payment.id)
 
     attendee = db.exec(select(Attendees).where(Attendees.popup_id == popup.id)).one()
-    assert attendee.name == "Guest Recipient"
+    assert attendee.name == "Open Buyer"
     assert attendee.human_id == payment.buyer_human_id
     assert attendee.category_id is None
