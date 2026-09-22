@@ -955,6 +955,8 @@
       "subheading": "Próximos eventos en {{cityName}}",
       "subheading_with_tz": "Próximos eventos en {{cityName}}, horarios en {{timezone}}",
       "empty_state": "Aún no hay eventos",
+      "now": "Ahora",
+      "live": "En curso",
       "events_disabled_heading": "Eventos desactivados",
       "events_disabled_message": "El organizador desactivó los eventos para {{cityName}}.",
       "part_of_recurring_series": "Parte de una serie recurrente",
