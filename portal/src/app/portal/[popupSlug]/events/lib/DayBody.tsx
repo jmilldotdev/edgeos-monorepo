@@ -39,7 +39,9 @@ import { cn } from "@/lib/utils"
 import type { EventsScrollSnapshot } from "./eventsViewState"
 import { fetchAllPortalEvents } from "./fetchAllPortalEvents"
 import { buildPortalEventHref } from "./portalEventHref"
+import { RsvpBlockedCta } from "./RsvpBlockedCta"
 import { summarizeRrule } from "./summarizeRrule"
+import type { RsvpBlockReason } from "./useCanRsvp"
 import { useEventRsvp } from "./useEventRsvp"
 import { useEventTimezone } from "./useEventTimezone"
 
@@ -108,6 +110,11 @@ interface DayBodyProps {
   canRsvp?: boolean
   /** Tooltip text shown on the disabled RSVP button explaining why. */
   rsvpDisabledReason?: string
+  /**
+   * Why RSVP is blocked. `no_tickets` swaps the dead disabled button for a
+   * tappable popover offering the popup's purchase flow.
+   */
+  rsvpBlockReason?: RsvpBlockReason
   /**
    * When false, the RSVP and "Going"/cancel buttons are hidden entirely —
    * used for ended (read-only) popups. Defaults to true.
@@ -179,6 +186,7 @@ export function DayBody({
   timezoneOverride,
   canRsvp = true,
   rsvpDisabledReason,
+  rsvpBlockReason,
   showRsvp = true,
 }: DayBodyProps) {
   const isAuthed = mode === "authed"
@@ -865,26 +873,31 @@ export function DayBody({
                                         {t("events.rsvp.going")}
                                       </button>
                                     ) : (
-                                      <button
-                                        type="button"
-                                        disabled={isRsvpPending || !canRsvp}
-                                        title={
-                                          !canRsvp
-                                            ? rsvpDisabledReason
-                                            : undefined
-                                        }
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-                                          rsvpMutation.mutate(fullEvent)
-                                        }}
-                                        className="inline-flex items-center gap-0.5 rounded border bg-background px-1 py-0.5 text-[9px] font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                                      <RsvpBlockedCta
+                                        reason={rsvpBlockReason}
+                                        message={rsvpDisabledReason}
                                       >
-                                        {isRsvpPending && (
-                                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                                        )}
-                                        {t("events.rsvp.rsvp")}
-                                      </button>
+                                        <button
+                                          type="button"
+                                          disabled={isRsvpPending || !canRsvp}
+                                          title={
+                                            !canRsvp
+                                              ? rsvpDisabledReason
+                                              : undefined
+                                          }
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            rsvpMutation.mutate(fullEvent)
+                                          }}
+                                          className="inline-flex items-center gap-0.5 rounded border bg-background px-1 py-0.5 text-[9px] font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                          {isRsvpPending && (
+                                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                          )}
+                                          {t("events.rsvp.rsvp")}
+                                        </button>
+                                      </RsvpBlockedCta>
                                     )}
                                   </div>
                                 )

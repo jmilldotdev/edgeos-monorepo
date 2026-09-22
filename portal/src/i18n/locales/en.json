@@ -1053,7 +1053,8 @@
       "checked_in": "Checked in",
       "action_error": "Couldn't update your RSVP. Please try again.",
       "requires_ticket": "You need a ticket for this popup to RSVP.",
-      "application_rejected": "Your application wasn't accepted, so you can't RSVP."
+      "application_rejected": "Your application wasn't accepted, so you can't RSVP.",
+      "why_blocked": "Why can't I RSVP?"
     },
     "recurrence": {
       "daily_one": "Repeats daily",

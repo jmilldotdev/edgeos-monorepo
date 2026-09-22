@@ -1051,7 +1051,8 @@
       "checked_in": "Check-in realizado",
       "action_error": "No pudimos actualizar tu RSVP. Por favor intentá de nuevo.",
       "requires_ticket": "Necesitás un ticket de este evento para registrarte.",
-      "application_rejected": "Tu aplicación no fue aceptada, no podés registrarte."
+      "application_rejected": "Tu aplicación no fue aceptada, no podés registrarte.",
+      "why_blocked": "¿Por qué no puedo registrarme?"
     },
     "recurrence": {
       "daily_one": "Se repite diariamente",

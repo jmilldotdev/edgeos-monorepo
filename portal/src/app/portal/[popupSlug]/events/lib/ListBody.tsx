@@ -34,7 +34,9 @@ import { canManageEvent } from "./eventPermissions"
 import type { EventsScrollSnapshot } from "./eventsViewState"
 import { LiveBadge } from "./LiveBadge"
 import { buildPortalEventHref } from "./portalEventHref"
+import { RsvpBlockedCta } from "./RsvpBlockedCta"
 import { summarizeRrule } from "./summarizeRrule"
+import type { RsvpBlockReason } from "./useCanRsvp"
 import { useNowTick } from "./useNowTick"
 
 const statusColors: Record<string, string> = {
@@ -158,6 +160,11 @@ interface ListBodyProps {
   /** Tooltip text shown on the disabled RSVP button explaining why. */
   rsvpDisabledReason?: string
   /**
+   * Why RSVP is blocked. `no_tickets` swaps the dead disabled button for a
+   * tappable popover offering the popup's purchase flow.
+   */
+  rsvpBlockReason?: RsvpBlockReason
+  /**
    * When false, the RSVP and "Going"/cancel buttons are hidden entirely —
    * used for ended (read-only) popups. Defaults to true.
    */
@@ -205,6 +212,7 @@ export function ListBody({
   pendingRsvpKey,
   canRsvp = true,
   rsvpDisabledReason,
+  rsvpBlockReason,
   showRsvp = true,
   onHide,
   onUnhide,
@@ -591,24 +599,31 @@ export function ListBody({
                                     {t("events.rsvp.going")}
                                   </button>
                                 ) : (
-                                  <button
-                                    type="button"
-                                    disabled={isRsvpPending || !canRsvp}
-                                    title={
-                                      !canRsvp ? rsvpDisabledReason : undefined
-                                    }
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                      onRsvp?.(event)
-                                    }}
-                                    className="inline-flex h-7 items-center gap-1 rounded-md border bg-background px-2 text-xs font-medium shadow-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                                  <RsvpBlockedCta
+                                    reason={rsvpBlockReason}
+                                    message={rsvpDisabledReason}
                                   >
-                                    {isRsvpPending && (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    )}
-                                    {t("events.rsvp.rsvp")}
-                                  </button>
+                                    <button
+                                      type="button"
+                                      disabled={isRsvpPending || !canRsvp}
+                                      title={
+                                        !canRsvp
+                                          ? rsvpDisabledReason
+                                          : undefined
+                                      }
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        onRsvp?.(event)
+                                      }}
+                                      className="inline-flex h-7 items-center gap-1 rounded-md border bg-background px-2 text-xs font-medium shadow-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                      {isRsvpPending && (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      )}
+                                      {t("events.rsvp.rsvp")}
+                                    </button>
+                                  </RsvpBlockedCta>
                                 )
                               })()}
                             <button
