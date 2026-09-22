@@ -68,6 +68,7 @@ import { useCityProvider } from "@/providers/cityProvider"
 import { AddToCalendarModal } from "../lib/AddToCalendarModal"
 import { CoverImage } from "../lib/CoverImage"
 import { canManageEvent } from "../lib/eventPermissions"
+import { RsvpBlockedCta } from "../lib/RsvpBlockedCta"
 import { summarizeRrule } from "../lib/summarizeRrule"
 import { useCalendarAddedFlag } from "../lib/useCalendarAddedFlag"
 import { useCanRsvp } from "../lib/useCanRsvp"
@@ -746,6 +747,19 @@ export default function EventDetailPage() {
                   <Users className="h-4 w-4" />
                   {t("events.rsvp.full")}
                 </Button>
+              ) : !canRsvp && rsvpBlockReason === "no_tickets" ? (
+                // A missing ticket is the one blocker we can act on, so it
+                // gets a tappable popover with a link into the purchase
+                // flow instead of a hover-only tooltip.
+                <RsvpBlockedCta
+                  reason={rsvpBlockReason}
+                  message={rsvpDisabledReason}
+                >
+                  <Button disabled className="inline-flex items-center gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    {t("events.rsvp.rsvp")}
+                  </Button>
+                </RsvpBlockedCta>
               ) : !canRsvp ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
