@@ -29,10 +29,13 @@ import {
 } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
 import { CoverImage } from "./CoverImage"
+import { isEventLive } from "./eventLiveState"
 import { canManageEvent } from "./eventPermissions"
 import type { EventsScrollSnapshot } from "./eventsViewState"
+import { LiveBadge } from "./LiveBadge"
 import { buildPortalEventHref } from "./portalEventHref"
 import { summarizeRrule } from "./summarizeRrule"
+import { useNowTick } from "./useNowTick"
 
 const statusColors: Record<string, string> = {
   published: "bg-primary/10 text-primary",
@@ -216,16 +219,13 @@ export function ListBody({
   // next still-open day's header to the top of the viewport.
   const dayHeaderRefs = useRef<Map<string, HTMLElement>>(new Map())
 
-  // "Now" reference for the today divider + auto-scroll. Ticks once a
-  // minute so the divider creeps down as events start, without re-rendering
-  // every frame. Times are absolute instants, so the comparison is
-  // timezone-agnostic; `formatDayKey` (popup tz) decides which group is
+  // "Now" reference for the today divider, the LIVE badges and the
+  // auto-scroll. Ticks once a minute so the divider creeps down as events
+  // start and a card drops its badge when its event ends, without
+  // re-rendering every frame. Times are absolute instants, so the comparison
+  // is timezone-agnostic; `formatDayKey` (popup tz) decides which group is
   // "today".
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000)
-    return () => clearInterval(id)
-  }, [])
+  const now = useNowTick()
   const nowMs = now.getTime()
   const todayKey = formatDayKey(now.toISOString())
   // First event (globally, list is start-sorted) that hasn't started yet —
@@ -408,6 +408,11 @@ export function ListBody({
                     !firstUpcomingIsToday && domId === firstUpcomingDomId
                   const isHidden = isAuthed && event.hidden === true
                   const isHighlighted = event.highlighted === true
+                  const isLive = isEventLive(
+                    event.start_time,
+                    event.end_time,
+                    nowMs,
+                  )
                   const cardClass = isHidden
                     ? "relative rounded-xl border bg-card opacity-60 hover:opacity-100 transition-opacity"
                     : isHighlighted
@@ -483,7 +488,7 @@ export function ListBody({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2 mb-1">
-                                <h3 className="font-medium text-sm sm:text-base flex items-center gap-1.5">
+                                <h3 className="min-w-0 font-medium text-sm sm:text-base flex items-center gap-1.5">
                                   {isOwner && (
                                     <Crown
                                       className="h-3.5 w-3.5 shrink-0 text-amber-500"
@@ -492,13 +497,18 @@ export function ListBody({
                                   )}
                                   <span>{event.title}</span>
                                 </h3>
-                                {isAuthed && (
-                                  <Badge
-                                    variant="secondary"
-                                    className={eventBadge(event).className}
-                                  >
-                                    {t(eventBadge(event).labelKey)}
-                                  </Badge>
+                                {(isLive || isAuthed) && (
+                                  <div className="flex shrink-0 items-center gap-1.5">
+                                    {isLive && <LiveBadge />}
+                                    {isAuthed && (
+                                      <Badge
+                                        variant="secondary"
+                                        className={eventBadge(event).className}
+                                      >
+                                        {t(eventBadge(event).labelKey)}
+                                      </Badge>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

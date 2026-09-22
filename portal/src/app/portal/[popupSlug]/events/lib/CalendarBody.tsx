@@ -38,12 +38,15 @@ import { type EventPublic, EventsService, HumansService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { CoverImage } from "./CoverImage"
+import { isEventLive } from "./eventLiveState"
 import type { EventsScrollSnapshot } from "./eventsViewState"
 import { fetchAllPortalEvents } from "./fetchAllPortalEvents"
+import { LiveBadge } from "./LiveBadge"
 import { buildPortalEventHref } from "./portalEventHref"
 import { summarizeRrule } from "./summarizeRrule"
 import { useEventRsvp } from "./useEventRsvp"
 import { useEventTimezone } from "./useEventTimezone"
+import { useNowTick } from "./useNowTick"
 
 interface CalendarBodyProps {
   popupId: string | undefined
@@ -316,6 +319,13 @@ export function CalendarBody({
   ])
   const selectedPanelLoading = !useOverride && selectedDayLoading
 
+  // "Now" reference for the LIVE badges in the selected-day panel. Ticks once
+  // a minute so a card picks the badge up when its event starts and drops it
+  // when the event ends, without the user reloading. Independent of which day
+  // is selected: `isEventLive` compares absolute instants, so a past or
+  // future day simply has no live events.
+  const nowMs = useNowTick().getTime()
+
   // `from` rebuilds the events-page URL state (view + selected day) so
   // the detail page's "Back to events" link returns the user here.
   const from = selectedDayKey ? `view=calendar&date=${selectedDayKey}` : null
@@ -480,6 +490,11 @@ export function CalendarBody({
                       ? t("events.list.part_of_recurring_series")
                       : null)
                   const isHighlighted = event.highlighted === true
+                  const isLive = isEventLive(
+                    event.start_time,
+                    event.end_time,
+                    nowMs,
+                  )
                   const isOwner =
                     currentHuman != null && event.owner_id === currentHuman.id
                   return (
@@ -524,15 +539,18 @@ export function CalendarBody({
                             )
                           })()}
                           <div className="min-w-0 flex-1">
-                            <h4 className="text-sm font-medium truncate flex items-center gap-1.5">
-                              {isOwner && (
-                                <Crown
-                                  className="h-3.5 w-3.5 shrink-0 text-amber-500"
-                                  aria-label={t("events.list.owned_title")}
-                                />
-                              )}
-                              <span className="truncate">{event.title}</span>
-                            </h4>
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="min-w-0 text-sm font-medium truncate flex items-center gap-1.5">
+                                {isOwner && (
+                                  <Crown
+                                    className="h-3.5 w-3.5 shrink-0 text-amber-500"
+                                    aria-label={t("events.list.owned_title")}
+                                  />
+                                )}
+                                <span className="truncate">{event.title}</span>
+                              </h4>
+                              {isLive && <LiveBadge />}
+                            </div>
                             {event.kind && (
                               <p className="text-[11px] uppercase tracking-wide text-muted-foreground mt-0.5 truncate">
                                 {event.kind}

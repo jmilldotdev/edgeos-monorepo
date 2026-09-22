@@ -823,6 +823,8 @@
       "subheading": "Komandi viðburðir í {{cityName}}",
       "subheading_with_tz": "Komandi viðburðir í {{cityName}}, tímar sýndir í {{timezone}}",
       "empty_state": "Engir viðburðir enn",
+      "now": "Núna",
+      "live": "Í gangi",
       "events_disabled_heading": "Viðburðir eru óvirkir",
       "events_disabled_message": "Skipuleggjandinn hefur slökkt á viðburðum fyrir {{cityName}}.",
       "part_of_recurring_series": "Hluti af endurteknum röð",

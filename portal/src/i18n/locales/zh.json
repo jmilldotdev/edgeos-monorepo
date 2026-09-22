@@ -833,6 +833,8 @@
       "subheading": "{{cityName}} 即将举行的活动",
       "subheading_with_tz": "{{cityName}} 即将举行的活动，时间显示为 {{timezone}}",
       "empty_state": "暂无活动",
+      "now": "现在",
+      "live": "进行中",
       "events_disabled_heading": "活动已停用",
       "events_disabled_message": "组织者已关闭 {{cityName}} 的活动功能。",
       "part_of_recurring_series": "周期活动的一部分",
