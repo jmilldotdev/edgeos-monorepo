@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils"
 import type { EventsScrollSnapshot } from "./eventsViewState"
 import { fetchAllPortalEvents } from "./fetchAllPortalEvents"
 import { buildPortalEventHref } from "./portalEventHref"
+import { RsvpStatusAction } from "./RsvpStatusAction"
 import { summarizeRrule } from "./summarizeRrule"
 import { useEventRsvp } from "./useEventRsvp"
 import { useEventTimezone } from "./useEventTimezone"
@@ -847,23 +848,13 @@ export function DayBody({
                                 return (
                                   <div className="absolute bottom-1 right-1">
                                     {isRsvpd ? (
-                                      <button
-                                        type="button"
-                                        disabled={isRsvpPending}
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
+                                      <RsvpStatusAction
+                                        size="mini"
+                                        isPending={isRsvpPending}
+                                        onCancelRsvp={() =>
                                           cancelRsvpMutation.mutate(fullEvent)
-                                        }}
-                                        className="inline-flex items-center gap-0.5 rounded border border-emerald-300 bg-emerald-50 px-1 py-0.5 text-[9px] font-medium text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/60"
-                                      >
-                                        {isRsvpPending ? (
-                                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                                        ) : (
-                                          <CheckCircle className="h-2.5 w-2.5" />
-                                        )}
-                                        {t("events.rsvp.going")}
-                                      </button>
+                                        }
+                                      />
                                     ) : (
                                       <button
                                         type="button"
