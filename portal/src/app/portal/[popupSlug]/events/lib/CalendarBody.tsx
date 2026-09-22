@@ -18,7 +18,6 @@ import {
 } from "date-fns"
 import {
   Calendar as CalendarIcon,
-  CheckCircle,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -44,6 +43,7 @@ import { fetchAllPortalEvents } from "./fetchAllPortalEvents"
 import { LiveBadge } from "./LiveBadge"
 import { buildPortalEventHref } from "./portalEventHref"
 import { RsvpBlockedCta } from "./RsvpBlockedCta"
+import { RsvpStatusAction } from "./RsvpStatusAction"
 import { summarizeRrule } from "./summarizeRrule"
 import type { RsvpBlockReason } from "./useCanRsvp"
 import { useEventRsvp } from "./useEventRsvp"
@@ -634,21 +634,13 @@ export function CalendarBody({
                           return (
                             <div className="absolute top-2 right-2">
                               {isRsvped ? (
-                                <button
-                                  type="button"
-                                  disabled={isRsvpPending}
-                                  onClick={() =>
+                                <RsvpStatusAction
+                                  size="compact"
+                                  isPending={isRsvpPending}
+                                  onCancelRsvp={() =>
                                     cancelRsvpMutation.mutate(event)
                                   }
-                                  className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/60"
-                                >
-                                  {isRsvpPending ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <CheckCircle className="h-3 w-3" />
-                                  )}
-                                  {t("events.rsvp.going")}
-                                </button>
+                                />
                               ) : (
                                 <RsvpBlockedCta
                                   reason={rsvpBlockReason}

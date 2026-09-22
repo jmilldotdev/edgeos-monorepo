@@ -2,7 +2,6 @@
 
 import {
   CalendarDays,
-  CheckCircle,
   ChevronDown,
   Clock,
   Crown,
@@ -35,6 +34,7 @@ import type { EventsScrollSnapshot } from "./eventsViewState"
 import { LiveBadge } from "./LiveBadge"
 import { buildPortalEventHref } from "./portalEventHref"
 import { RsvpBlockedCta } from "./RsvpBlockedCta"
+import { RsvpStatusAction } from "./RsvpStatusAction"
 import { summarizeRrule } from "./summarizeRrule"
 import type { RsvpBlockReason } from "./useCanRsvp"
 import { useNowTick } from "./useNowTick"
@@ -581,23 +581,11 @@ export function ListBody({
                                   event.my_rsvp_status &&
                                   event.my_rsvp_status !== "cancelled"
                                 return isRsvped ? (
-                                  <button
-                                    type="button"
-                                    disabled={isRsvpPending}
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                      onCancelRsvp?.(event)
-                                    }}
-                                    className="inline-flex h-7 items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/60"
-                                  >
-                                    {isRsvpPending ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <CheckCircle className="h-3 w-3" />
-                                    )}
-                                    {t("events.rsvp.going")}
-                                  </button>
+                                  <RsvpStatusAction
+                                    size="compact"
+                                    isPending={isRsvpPending}
+                                    onCancelRsvp={() => onCancelRsvp?.(event)}
+                                  />
                                 ) : (
                                   <RsvpBlockedCta
                                     reason={rsvpBlockReason}

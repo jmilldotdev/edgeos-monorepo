@@ -28,7 +28,6 @@ import {
   UserPlus,
   Users,
   Video,
-  X,
 } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
@@ -69,6 +68,7 @@ import { AddToCalendarModal } from "../lib/AddToCalendarModal"
 import { CoverImage } from "../lib/CoverImage"
 import { canManageEvent } from "../lib/eventPermissions"
 import { RsvpBlockedCta } from "../lib/RsvpBlockedCta"
+import { RsvpStatusAction } from "../lib/RsvpStatusAction"
 import { summarizeRrule } from "../lib/summarizeRrule"
 import { useCalendarAddedFlag } from "../lib/useCalendarAddedFlag"
 import { useCanRsvp } from "../lib/useCanRsvp"
@@ -715,17 +715,26 @@ export default function EventDetailPage() {
 
       {/* Details card */}
       <div className="relative rounded-xl border bg-card p-4 space-y-3">
+        {/* Fixed-width slot: the "RSVP" button and the wider
+            "Going + Cancel RSVP" group both land inside it, so switching
+            states never reflows the card. The rows below reserve the
+            matching horizontal padding. */}
         {event.status === "published" && (
-          <div className="absolute top-3 right-3">
+          <div className="absolute top-3 right-3 w-48 sm:w-60">
             <div className="flex flex-col items-end gap-1.5">
               {isRsvped ? (
                 <>
-                  <div className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-300">
-                    <CheckCircle className="h-4 w-4" />
-                    {myRsvpStatus === "checked_in"
-                      ? t("events.rsvp.checked_in")
-                      : t("events.rsvp.going")}
-                  </div>
+                  <RsvpStatusAction
+                    size="default"
+                    label={
+                      myRsvpStatus === "checked_in"
+                        ? (t("events.rsvp.checked_in") as string)
+                        : (t("events.rsvp.going") as string)
+                    }
+                    showCancel={!isEnded && myRsvpStatus === "registered"}
+                    isPending={isPending}
+                    onCancelRsvp={() => cancelMutation.mutate()}
+                  />
                   {!isEnded &&
                     myRsvpStatus === "registered" &&
                     eventStarted && (
@@ -792,7 +801,7 @@ export default function EventDetailPage() {
             </div>
           </div>
         )}
-        <div className="flex items-center gap-2.5 pr-44 sm:pr-56">
+        <div className="flex items-center gap-2.5 pr-48 sm:pr-60">
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <Clock className="h-4 w-4 text-primary" />
           </div>
@@ -818,7 +827,7 @@ export default function EventDetailPage() {
             event.host_display_name?.trim() || city?.name?.trim() || null
           if (!hostName) return null
           return (
-            <div className="flex items-center gap-2.5 pr-44 sm:pr-56">
+            <div className="flex items-center gap-2.5 pr-48 sm:pr-60">
               <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
                 <User className="h-4 w-4 text-amber-600" />
               </div>
@@ -832,7 +841,7 @@ export default function EventDetailPage() {
           )
         })()}
         {event.rrule && (
-          <div className="flex items-center gap-2.5 pr-44 sm:pr-56">
+          <div className="flex items-center gap-2.5 pr-48 sm:pr-60">
             <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
               <Repeat className="h-4 w-4 text-blue-600" />
             </div>
@@ -1015,30 +1024,15 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* Below-card RSVP utilities: hint on the left, Cancel RSVP on the right.
-          Separated by justify-between so they don't visually crowd each other. */}
+      {/* Cancel RSVP now lives beside the "Going" status in the details card.
+          Only the check-in hint remains here. */}
       {!isEnded &&
         event.status === "published" &&
-        myRsvpStatus === "registered" && (
-          <div className="flex items-center justify-between gap-4">
-            {!eventStarted ? (
-              <span className="text-xs text-muted-foreground">
-                {t("events.rsvp.check_in_opens_at_start")}
-              </span>
-            ) : (
-              <span />
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => cancelMutation.mutate()}
-              disabled={isPending}
-              className="border-destructive/30 bg-destructive/10 text-destructive shadow-none hover:border-destructive/50 hover:bg-destructive/20 hover:text-destructive dark:border-destructive/40 dark:bg-destructive/20 dark:hover:bg-destructive/30"
-            >
-              <X className="h-3.5 w-3.5" />
-              {t("events.rsvp.cancel")}
-            </Button>
-          </div>
+        myRsvpStatus === "registered" &&
+        !eventStarted && (
+          <p className="text-xs text-muted-foreground">
+            {t("events.rsvp.check_in_opens_at_start")}
+          </p>
         )}
 
       {/* Managers only (owner / host / collaborators): paste attendees to invite */}
