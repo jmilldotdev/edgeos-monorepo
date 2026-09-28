@@ -21,9 +21,13 @@ from app.api.tenant.models import Tenants
 def test_backfill_preserves_buyers_existing_categories_and_ambiguous_history(
     migration_test_engine,
 ):
-    with migration_test_engine.begin() as connection:
+    with (
+        migration_test_engine.connect() as connection,
+        connection.begin() as transaction,
+    ):
         config = Config("alembic.ini")
         config.attributes["connection"] = connection
+        command.upgrade(config, migration.revision)
         command.downgrade(config, migration.down_revision)
         with Session(bind=connection, join_transaction_mode="create_savepoint") as db:
             tenant = Tenants(name="Repair test", slug=f"repair-{uuid.uuid4()}")
@@ -200,3 +204,7 @@ def test_backfill_preserves_buyers_existing_categories_and_ambiguous_history(
                 attendee_id: db.get(Attendees, attendee_id).category_id
                 for attendee_id in expected
             } == expected
+
+        # Other migration tests share this database and exercise older schemas.
+        # Leave neither these fixture rows nor a changed schema revision behind.
+        transaction.rollback()
