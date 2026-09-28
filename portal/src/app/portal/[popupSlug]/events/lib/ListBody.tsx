@@ -421,11 +421,16 @@ export function ListBody({
                     event.end_time,
                     nowMs,
                   )
+                  // Live sits below highlighted on purpose: the amber
+                  // treatment is an editorial choice the organiser made, and
+                  // a live featured event still reads as live from its badge.
                   const cardClass = isHidden
                     ? "relative rounded-xl border bg-card opacity-60 hover:opacity-100 transition-opacity"
                     : isHighlighted
                       ? "relative rounded-xl border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:shadow-md transition-shadow"
-                      : "relative rounded-xl border bg-card hover:shadow-md transition-shadow"
+                      : isLive
+                        ? "relative rounded-xl border border-red-500/30 bg-red-50 dark:bg-red-950/20 hover:shadow-md transition-shadow"
+                        : "relative rounded-xl border bg-card hover:shadow-md transition-shadow"
                   const href = buildPortalEventHref({
                     slug,
                     eventId: event.id,

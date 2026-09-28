@@ -3,7 +3,7 @@
 import { Ticket } from "lucide-react"
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
@@ -60,19 +60,24 @@ function BuyTicketPopover({
 }: Omit<RsvpBlockedCtaProps, "reason">) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const anchorRef = useRef<HTMLSpanElement>(null)
   const buyHref = useBuyTicketsHref()
 
   // The event cards in the list and day views sit inside a <Link>, so the
   // wrapper has to swallow the click before it reaches the anchor. That rules
   // out PopoverTrigger, whose handler Radix skips once defaultPrevented is
   // set; an anchor plus our own handler keeps both behaviours.
-  const openPopover = (event: {
+  // Toggle, not open. Without a PopoverTrigger, Radix's DismissableLayer
+  // counts this wrapper as outside the layer, so a second tap already fires
+  // its dismiss; setting `true` here would immediately reopen it and the
+  // popover could never be closed by tapping the thing that opened it.
+  const togglePopover = (event: {
     preventDefault(): void
     stopPropagation(): void
   }) => {
     event.preventDefault()
     event.stopPropagation()
-    setOpen(true)
+    setOpen((wasOpen) => !wasOpen)
   }
 
   return (
@@ -80,15 +85,16 @@ function BuyTicketPopover({
       <PopoverAnchor asChild>
         {/** biome-ignore lint/a11y/useSemanticElements: a real <button> cannot wrap the disabled RSVP button without nesting interactive elements */}
         <span
+          ref={anchorRef}
           role="button"
           tabIndex={0}
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-label={t("events.rsvp.why_blocked")}
           title={message}
-          onClick={openPopover}
+          onClick={togglePopover}
           onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") openPopover(event)
+            if (event.key === "Enter" || event.key === " ") togglePopover(event)
           }}
           // The wrapped button is disabled, and disabled controls swallow
           // pointer events instead of letting them bubble. Making it
@@ -108,6 +114,13 @@ function BuyTicketPopover({
         // PopoverContent renders through a React portal, so its events still
         // bubble up the React tree into the surrounding event-card <Link>.
         onClick={(event) => event.stopPropagation()}
+        // Radix restores focus to its trigger, and there is no trigger here,
+        // so focus would land on <body> and a keyboard user would lose their
+        // place in the list. Put it back on the wrapper instead.
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          anchorRef.current?.focus()
+        }}
       >
         <p className="text-sm text-muted-foreground">
           {message ?? t("events.rsvp.requires_ticket")}

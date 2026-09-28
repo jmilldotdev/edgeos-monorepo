@@ -514,6 +514,11 @@ export function CalendarBody({
                       }
                       className={cn(
                         "relative rounded-xl border bg-card hover:shadow-md transition-shadow overflow-hidden",
+                        // Listed before highlighted so the organiser's amber
+                        // treatment still wins through tailwind-merge; a live
+                        // featured event keeps its badge either way.
+                        isLive &&
+                          "border-red-500/30 bg-red-50 dark:bg-red-950/20",
                         isHighlighted &&
                           "border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30",
                       )}

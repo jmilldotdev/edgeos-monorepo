@@ -122,4 +122,25 @@ describe("RsvpBlockedCta", () => {
 
     expect(onLinkClick).not.toHaveBeenCalled()
   })
+
+  it("closes again when the trigger is tapped a second time", () => {
+    render(
+      <RsvpBlockedCta reason="no_tickets" message="needs a ticket">
+        <DisabledRsvpButton />
+      </RsvpBlockedCta>,
+    )
+
+    const trigger = screen.getByRole("button", {
+      name: "events.rsvp.why_blocked",
+    })
+
+    fireEvent.click(trigger)
+    expect(screen.getByText("needs a ticket")).toBeTruthy()
+
+    // Tapping the trigger again is the first thing a touch user reaches for,
+    // and there is no PopoverTrigger to handle it, so the wrapper has to
+    // toggle rather than re-open what Radix just dismissed.
+    fireEvent.click(trigger)
+    expect(screen.queryByText("needs a ticket")).toBeNull()
+  })
 })

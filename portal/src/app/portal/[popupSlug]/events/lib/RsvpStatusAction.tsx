@@ -106,7 +106,15 @@ export function RsvpStatusAction({
     // navigate away to the event page.
     // biome-ignore lint/a11y/noStaticElementInteractions: not an interaction of its own; the handler only absorbs clicks (including the portalled dialog's, which still bubble through this React subtree) so the surrounding event-card link cannot navigate. The real controls below are a <span> and a <button>.
     <div
-      className={cn("inline-flex items-center", sz.wrapper, className)}
+      // Wraps instead of overflowing: the detail page pins this into a
+      // fixed-width slot, and the controls are nowrap, so a longer locale
+      // (Spanish and Icelandic both run longer) would otherwise spill left
+      // over the rows beneath it.
+      className={cn(
+        "inline-flex max-w-full flex-wrap items-center justify-end",
+        sz.wrapper,
+        className,
+      )}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
@@ -148,15 +156,12 @@ export function RsvpStatusAction({
       )}
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent
-          className="max-w-md rounded-lg"
-          hasCloseButton={false}
-          onOpenAutoFocus={(e) => {
-            // Focus the dialog itself rather than the destructive button, so
-            // an Enter keypress left over from the trigger cannot confirm.
-            e.preventDefault()
-          }}
-        >
+        {/* Radix's default focus handling is left alone on purpose. With
+            hasCloseButton={false} the first tabbable node is the safe "keep"
+            button, so an Enter left over from the trigger cannot confirm
+            anyway, and preventing the auto-focus would strand focus on the
+            now aria-hidden trigger instead of trapping it in the dialog. */}
+        <DialogContent className="max-w-md rounded-lg" hasCloseButton={false}>
           <DialogHeader className="text-left">
             <DialogTitle>{t("events.rsvp.cancel_confirm_title")}</DialogTitle>
             <DialogDescription>
