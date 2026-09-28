@@ -1,14 +1,14 @@
 """Add per-sales-flow SimpleFi API key override.
 
 Revision ID: c4e81a2d7f90
-Revises: d6f2b8a94c31
+Revises: c6f1a8e4d2b7
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "c4e81a2d7f90"
-down_revision = "d6f2b8a94c31"
+down_revision = "c6f1a8e4d2b7"
 branch_labels = None
 depends_on = None
 
