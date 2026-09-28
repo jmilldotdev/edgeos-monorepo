@@ -1265,6 +1265,40 @@ def test_purchase_preserves_companion_category_and_buyer_main(
     assert detail.json()["category_id"] == str(category.id)
 
 
+@pytest.mark.parametrize("source", [None, "stripe"])
+@pytest.mark.parametrize("free", [False, True])
+def test_new_checkout_is_not_blocked_by_imported_pending_payment(
+    db, tenant_a, source, free
+):
+    popup, flow, buyer, category, application, product = _payment_context(db, tenant_a)
+    prior = Payments(
+        tenant_id=tenant_a.id,
+        popup_id=popup.id,
+        sales_flow_id=flow.id,
+        application_id=application.id,
+        buyer_human_id=buyer.id,
+        source=source,
+        external_id=f"import-{uuid.uuid4()}",
+        status="pending",
+        amount=250,
+    )
+    if free:
+        product.price = Decimal("0")
+    db.add_all([prior, product])
+    db.commit()
+    with patch("app.services.simplefi.get_simplefi_client") as provider:
+        provider.return_value.create_payment.return_value = _provider_response("new")
+        payment, _ = payments_crud.create_payment(
+            db, _request(application, product, category)
+        )
+    assert payment.id != prior.id
+    assert payment.status == ("approved" if free else "pending")
+    provider.return_value.cancel_payment_request.assert_not_called()
+    db.refresh(prior)
+    assert prior.status == "pending"
+    assert prior.amount == 250
+
+
 def test_open_checkout_buyer_receives_the_current_flow_primary_role(
     db: Session, tenant_a: Tenants
 ) -> None:

@@ -4698,6 +4698,19 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
             )
         return self.approve_payment(session, payment.id)
 
+    def _find_pending_by_application(
+        self, session: Session, application_id: uuid.UUID
+    ) -> Payments | None:
+        """Pending provider checkout managed by supersede and its race guard."""
+        return session.exec(
+            select(Payments).where(
+                Payments.application_id == application_id,
+                Payments.status == PaymentStatus.PENDING.value,
+                Payments.source == PaymentSource.SIMPLEFI.value,
+                Payments.external_id.is_not(None),  # type: ignore[union-attr]
+            )
+        ).first()
+
     def _check_no_pending_sibling_by_application(
         self,
         session: Session,
@@ -4706,7 +4719,7 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
         """Post-lock guard (authenticated): abort when a concurrent sibling PENDING payment exists.
 
         Called AFTER the ``applications FOR UPDATE`` lock is acquired in
-        create_payment.  A sibling is any PENDING payment already linked to
+        create_payment. A sibling is a PENDING provider checkout linked to
         this application_id — meaning a concurrent create_payment call already
         passed the supersede pre-step and started a new payment.  The slower
         caller should abort so there is exactly ONE new PENDING payment per
@@ -4715,12 +4728,9 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
         Raises HTTP 409 ``concurrent_payment_in_progress``.  NO SimpleFi call
         is made under this lock (ADR-2 invariant).
         """
-        sibling = session.exec(
-            select(Payments).where(
-                Payments.application_id == application_id,
-                Payments.status == PaymentStatus.PENDING.value,  # type: ignore[arg-type]
-            )
-        ).first()
+        # Match supersede's scope. Imported/manual payments cannot be cancelled
+        # by this checkout and must not be mistaken for a concurrent request.
+        sibling = self._find_pending_by_application(session, application_id)
         if sibling is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -4844,16 +4854,7 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
         Raises HTTP 409 ``concurrent_payment_in_progress``.  NO SimpleFi call
         is made under this lock (ADR-2 invariant).
         """
-        sibling = session.exec(
-            select(Payments)
-            .where(
-                Payments.popup_id == popup_id,
-                Payments.status == PaymentStatus.PENDING.value,  # type: ignore[arg-type]
-                Payments.application_id.is_(None),  # type: ignore[union-attr]
-            )
-            .where(text("buyer_snapshot->>'buyer_email' = :email"))
-            .params(email=email.lower())
-        ).first()
+        sibling = self._find_pending_by_email_popup(session, email, popup_id)
         if sibling is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -4948,14 +4949,7 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
         prior: Payments | None = None
 
         if application_id is not None:
-            prior = session.exec(
-                select(Payments).where(
-                    Payments.application_id == application_id,
-                    Payments.status == PaymentStatus.PENDING.value,  # type: ignore[arg-type]
-                    Payments.source == PaymentSource.SIMPLEFI.value,  # type: ignore[arg-type]
-                    Payments.external_id.is_not(None),  # type: ignore[union-attr]
-                )
-            ).first()
+            prior = self._find_pending_by_application(session, application_id)
         elif email is not None and popup_id is not None:
             prior = self._find_pending_by_email_popup(session, email, popup_id)
 

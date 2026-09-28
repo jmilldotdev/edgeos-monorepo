@@ -538,6 +538,7 @@
     "step_config_error_detail": "No se asignó una plantilla a este paso. Contactá a tu administrador.",
     "previous_payment_completed": "Tu pago anterior fue completado.",
     "pending_payment_wait": "Tenés un pago pendiente. Por favor, esperá unos minutos.",
+    "concurrent_payment_in_progress": "Hay otra compra en curso. Completala o esperá un momento antes de volver a intentar.",
     "payment_cancel_failed": "No pudimos procesar tu pago. Por favor, intentá de nuevo.",
     "flow_restriction_violated": "No sos elegible para comprar a través de este canal.",
     "product_not_in_flow": "Este producto no está disponible a través de este canal.",
@@ -625,6 +626,7 @@
     "previous_payment_completed": "Tu pago anterior fue completado.",
     "payment_cancel_failed": "No pudimos procesar tu pago. Por favor, intentá de nuevo.",
     "pending_payment_wait": "Tenés un pago pendiente. Por favor, esperá unos minutos.",
+    "concurrent_payment_in_progress": "Hay otra compra en curso. Completala o esperá un momento antes de volver a intentar.",
     "flow_restriction_violated": "No sos elegible para comprar a través de este canal.",
     "product_not_in_flow": "Este producto no está disponible a través de este canal."
   },
