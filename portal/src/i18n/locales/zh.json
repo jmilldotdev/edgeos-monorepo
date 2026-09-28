@@ -871,6 +871,8 @@
       "subheading": "{{cityName}} 即将举行的活动",
       "subheading_with_tz": "{{cityName}} 即将举行的活动，时间显示为 {{timezone}}",
       "empty_state": "暂无活动",
+      "now": "现在",
+      "live": "进行中",
       "events_disabled_heading": "活动已停用",
       "events_disabled_message": "组织者已关闭 {{cityName}} 的活动功能。",
       "part_of_recurring_series": "周期活动的一部分",
@@ -959,13 +961,18 @@
       "rsvp": "报名",
       "full": "已满",
       "cancel": "取消报名",
+      "cancel_confirm_title": "要取消报名吗？",
+      "cancel_confirm_body": "你将从该活动的参加者名单中移除。如果之后仍有名额，可以重新报名。",
+      "cancel_confirm_keep": "保留报名",
+      "cancel_confirm_confirm": "确认取消报名",
       "check_in": "签到",
       "check_in_opens_at_start": "签到将在活动开始时开放",
       "registered": "已登记",
       "checked_in": "已签到",
       "action_error": "无法更新你的报名，请稍后重试。",
       "requires_ticket": "你需要持有该活动的票才能报名。",
-      "application_rejected": "你的申请未获通过，无法报名。"
+      "application_rejected": "你的申请未获通过，无法报名。",
+      "why_blocked": "为什么我无法报名？"
     },
     "login_required": {
       "title": "登录以查看此活动",
