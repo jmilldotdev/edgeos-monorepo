@@ -95,6 +95,9 @@
     "approval_required_title": "Approval required",
     "approval_required_description": "Your application must be approved before you can purchase this option.",
     "approval_required_cta": "View application",
+    "no_products_title": "Nothing available to buy yet",
+    "no_products_description": "This way in has no products available. Please check back later.",
+    "back_to_passes": "Back to passes",
     "estimated_total": "Estimated total",
     "definitive_total": "Total"
   },
@@ -170,6 +173,18 @@
     "network_error": "Network error. Please check your connection."
   },
   "form": {
+    "multiselect": {
+      "placeholder": "Select options...",
+      "selected_one": "{{count}} option selected",
+      "selected_other": "{{count}} options selected",
+      "search": "Search...",
+      "search_label": "Search options",
+      "empty": "No options found",
+      "remove": "Remove {{option}}",
+      "between": "Select between {{min}} and {{max}} options",
+      "at_least": "Select at least {{min}}",
+      "up_to": "Select up to {{max}}"
+    },
     "email": "Email",
     "first_name": "First Name",
     "first_name_placeholder": "Enter your first name",
@@ -867,7 +882,7 @@
     "title": "Referrals",
     "description": "Share your referral link and earn rewards when someone joins through it.",
     "my_referrals": "My referral links",
-    "no_referrals": "You have no referral links yet.",
+    "no_referrals": "You have no links into this event yet.",
     "create_referral": "Create referral link",
     "creating": "Creating...",
     "create_error": "Failed to create referral link. Please try again.",
@@ -877,6 +892,7 @@
     "delete_confirm": "Yes, delete",
     "delete_cancel": "Cancel",
     "delete_error": "Failed to delete referral link. Please try again.",
+    "delete_used_explanation": "This link has already been used and can't be deleted.",
     "delete_success": "Referral link deleted.",
     "code_label": "Code",
     "discount_label": "Discount",
@@ -889,6 +905,7 @@
     "referrals_disabled": "Referrals are not enabled for this popup.",
     "not_accepted": "Referral links are available once your application is accepted.",
     "needs_ticket": "Referral links are available once you have a ticket for this event.",
+    "sharing_unavailable": "You cannot share links from this event right now.",
     "preview_loading": "Loading referral...",
     "preview_not_found_title": "Referral not found",
     "preview_not_found_description": "This referral link is invalid, expired, or no longer available.",
@@ -903,11 +920,13 @@
     "preview_apply_button": "Apply now",
     "preview_login_required_title": "Sign in to apply",
     "preview_login_required_description": "You need to be signed in to apply via this referral link.",
-    "one_link_notice": "You already have a referral link. Each attendee gets one link — share it to invite others.",
+    "one_link_notice": "You already have a link for this way in. Share it to invite others.",
     "disabled_badge": "Disabled",
     "cross_title": "Invite someone to another event",
     "cross_description": "Share a link to one of our other events, even if you are not going yourself.",
-    "cross_create": "Create link"
+    "cross_create": "Create link",
+    "ended_description": "This event has ended. You can still invite people to our other events.",
+    "ended_no_targets": "There are no other events accepting links right now."
   },
   "invite": {
     "loading": "Loading invite...",
@@ -943,6 +962,26 @@
     "error": "Error"
   },
   "events": {
+    "messages": {
+      "heading": "Contact attendees",
+      "message": "Message",
+      "audience_all": "Send an email to all active RSVPs who still have access to this gathering.",
+      "audience_occurrence": "Send an email to active RSVPs for this occurrence who still have access to this gathering.",
+      "send": "Send message",
+      "sending": "Sending…",
+      "sent": "Message sent to {{count}} attendees.",
+      "send_error": "Could not send the message. Check that the event has eligible attendees and try again.",
+      "history": "Message history",
+      "refresh": "Refresh",
+      "loading": "Loading messages…",
+      "history_error": "Could not load message history.",
+      "empty": "No messages yet.",
+      "result": "Sent: {{sent}}. Failed: {{failed}}.",
+      "incomplete": "Delivery has not finished. Refresh the history to check its progress.",
+      "occurrence": "Occurrence: {{date}}",
+      "previous": "Previous",
+      "next": "Next"
+    },
     "common": {
       "back_to_events": "Back to events",
       "no_open_hours": "No open hours",

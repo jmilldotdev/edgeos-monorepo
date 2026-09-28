@@ -5739,6 +5739,18 @@ export const AttendeeSharingStatusSchema = {
         can_share: {
             type: 'boolean',
             title: 'Can Share'
+        },
+        sales_flow_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Sales Flow Id'
         }
     },
     type: 'object',
@@ -9482,6 +9494,15 @@ export const CrossPopupReferralTargetSchema = {
             type: 'string',
             title: 'Slug'
         },
+        sales_flow_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Sales Flow Id'
+        },
+        flow_name: {
+            type: 'string',
+            title: 'Flow Name'
+        },
         link: {
             anyOf: [
                 {
@@ -9494,13 +9515,9 @@ export const CrossPopupReferralTargetSchema = {
         }
     },
     type: 'object',
-    required: ['popup_id', 'name', 'slug'],
+    required: ['popup_id', 'name', 'slug', 'sales_flow_id', 'flow_name'],
     title: 'CrossPopupReferralTarget',
-    description: `A popup an attendee may share from the popup they are in.
-
-\`\`link\`\` is the attendee's existing link into it, if they have one. It
-may predate the cross-popup share, since an attendee holds one link per
-popup whichever way it was created.`
+    description: 'One accepting application flow of another popup, with its own link.'
 } as const;
 
 export const CumulativeTrendsSchema = {
@@ -10007,7 +10024,7 @@ export const EmailTemplatePublicSchema = {
 
 export const EmailTemplateTypeSchema = {
     type: 'string',
-    enum: ['login_code_user', 'login_code_human', 'application_received', 'application_accepted', 'application_rejected', 'application_accepted_with_discount', 'application_accepted_with_incentive', 'application_accepted_scholarship_rejected', 'payment_confirmed', 'abandoned_cart', 'purchase_reminder', 'abandoned_application', 'edit_passes_confirmed', 'event_invitation', 'event_updated', 'event_cancelled', 'event_rsvp_cancelled', 'event_approval_approved', 'event_approval_rejected', 'check_in_pass'],
+    enum: ['login_code_user', 'login_code_human', 'application_received', 'application_accepted', 'application_rejected', 'application_accepted_with_discount', 'application_accepted_with_incentive', 'application_accepted_scholarship_rejected', 'payment_confirmed', 'abandoned_cart', 'purchase_reminder', 'abandoned_application', 'edit_passes_confirmed', 'event_invitation', 'event_host_message', 'event_updated', 'event_cancelled', 'event_rsvp_cancelled', 'event_approval_approved', 'event_approval_rejected', 'check_in_pass'],
     title: 'EmailTemplateType'
 } as const;
 
@@ -10707,6 +10724,105 @@ export const EventInvitationPublicSchema = {
     type: 'object',
     required: ['id', 'event_id', 'human_id', 'email', 'created_at'],
     title: 'EventInvitationPublic'
+} as const;
+
+export const EventMessageCreateSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id',
+            description: 'Reuse this ID when retrying the same send.'
+        },
+        body: {
+            type: 'string',
+            maxLength: 10000,
+            minLength: 1,
+            title: 'Body'
+        },
+        occurrence_start: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Occurrence Start'
+        }
+    },
+    type: 'object',
+    required: ['id', 'body'],
+    title: 'EventMessageCreate'
+} as const;
+
+export const EventMessagePublicSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        event_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Event Id'
+        },
+        author_name: {
+            type: 'string',
+            title: 'Author Name'
+        },
+        body: {
+            type: 'string',
+            title: 'Body'
+        },
+        occurrence_start: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Occurrence Start'
+        },
+        recipient_count: {
+            type: 'integer',
+            title: 'Recipient Count'
+        },
+        sent_count: {
+            type: 'integer',
+            title: 'Sent Count'
+        },
+        failed_count: {
+            type: 'integer',
+            title: 'Failed Count'
+        },
+        created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Created At'
+        },
+        completed_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Completed At'
+        }
+    },
+    type: 'object',
+    required: ['id', 'event_id', 'author_name', 'body', 'occurrence_start', 'recipient_count', 'sent_count', 'failed_count', 'created_at', 'completed_at'],
+    title: 'EventMessagePublic'
 } as const;
 
 export const EventOpaqueSchema = {
@@ -16242,6 +16358,18 @@ export const InvitePortalCreateSchema = {
             ],
             title: 'Source Popup Id'
         },
+        sales_flow_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Sales Flow Id'
+        },
         token: {
             anyOf: [
                 {
@@ -16493,6 +16621,18 @@ export const InvitePublicPreviewSchema = {
             type: 'string',
             format: 'uuid',
             title: 'Popup Id'
+        },
+        sales_flow_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Sales Flow Id'
         },
         token: {
             type: 'string',
@@ -17070,6 +17210,24 @@ export const ListModel_EmailTemplatePublic_Schema = {
     type: 'object',
     required: ['results', 'paging'],
     title: 'ListModel[EmailTemplatePublic]'
+} as const;
+
+export const ListModel_EventMessagePublic_Schema = {
+    properties: {
+        results: {
+            items: {
+                '$ref': '#/components/schemas/EventMessagePublic'
+            },
+            type: 'array',
+            title: 'Results'
+        },
+        paging: {
+            '$ref': '#/components/schemas/Paging'
+        }
+    },
+    type: 'object',
+    required: ['results', 'paging'],
+    title: 'ListModel[EventMessagePublic]'
 } as const;
 
 export const ListModel_EventParticipantPublic_Schema = {
@@ -22558,6 +22716,7 @@ export const ProductBatchItemSchema = {
         },
         category: {
             type: 'string',
+            minLength: 1,
             title: 'Category',
             default: 'ticket'
         },
@@ -23000,6 +23159,7 @@ export const ProductCreateSchema = {
         },
         category: {
             type: 'string',
+            minLength: 1,
             title: 'Category',
             default: 'ticket'
         },
@@ -23479,7 +23639,8 @@ export const ProductUpdateSchema = {
         category: {
             anyOf: [
                 {
-                    type: 'string'
+                    type: 'string',
+                    minLength: 1
                 },
                 {
                     type: 'null'
@@ -24445,6 +24606,30 @@ export const ReviewSummarySchema = {
     required: ['total_reviews', 'strong_yes_count', 'yes_count', 'no_count', 'strong_no_count', 'reviews'],
     title: 'ReviewSummary',
     description: 'Summary of reviews for an application.'
+} as const;
+
+export const RsvpEligibilitySchema = {
+    properties: {
+        allowed: {
+            type: 'boolean',
+            title: 'Allowed'
+        },
+        reason: {
+            anyOf: [
+                {
+                    type: 'string',
+                    enum: ['rejected', 'no_tickets']
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Reason'
+        }
+    },
+    type: 'object',
+    required: ['allowed'],
+    title: 'RsvpEligibility'
 } as const;
 
 export const SaleTypeSchema = {
