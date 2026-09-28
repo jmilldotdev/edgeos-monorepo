@@ -1460,13 +1460,14 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
                 # carrying the order data. The portal redirects the buyer there.
                 return payment, "", success_redirect
 
-            if not popup.simplefi_api_key:
+            simplefi_api_key = target_flow.simplefi_api_key or popup.simplefi_api_key
+            if not simplefi_api_key:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Payment provider not configured for this popup",
                 )
 
-            simplefi_client = get_simplefi_client(popup.simplefi_api_key)
+            simplefi_client = get_simplefi_client(simplefi_api_key)
 
             # SimpleFi performs the redirect, so hand it the resolved success URL
             # (custom-signed, or the portal thank-you with the order data). The
@@ -1764,6 +1765,7 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
         """
         from app.api.application.schemas import ApplicationStatus
         from app.api.payment.schemas import PaymentStatus, PaymentType
+        from app.api.sales_flow.models import SalesFlows  # noqa: PLC0415
         from app.api.sales_flow.resolver import config_for  # noqa: PLC0415
         from app.api.tenant.utils import get_portal_url
 
@@ -1780,6 +1782,14 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
             sales_flow_id=application.sales_flow_id,
             popup_id=application.popup_id,
         )
+        payment_flow = (
+            session.get(SalesFlows, application.sales_flow_id)
+            if application.sales_flow_id
+            else None
+        )
+        simplefi_api_key = (
+            payment_flow.simplefi_api_key if payment_flow else None
+        ) or popup.simplefi_api_key
         application_fee_amount = fee_config.application_fee_amount
         if (
             not fee_config.requires_application_fee
@@ -1794,7 +1804,6 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
         # 3. Check for existing pending fee payment
         existing = self.get_latest_fee_payment(session, application.id)
         if existing and existing.status == PaymentStatus.PENDING.value:
-            simplefi_api_key = popup.simplefi_api_key
             if not simplefi_api_key:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -1848,7 +1857,6 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
         fee_amount = Decimal(str(application_fee_amount))
 
         # 5. Validate SimpleFI is configured
-        simplefi_api_key = popup.simplefi_api_key
         if not simplefi_api_key:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -3717,8 +3725,18 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
             preview.status = PaymentStatus.APPROVED.value
             return payment, preview
 
-        # Validate popup has SimpleFI API key configured
-        if not application.popup or not application.popup.simplefi_api_key:
+        # Use the flow override when present, otherwise inherit the popup key.
+        from app.api.sales_flow.models import SalesFlows
+
+        application_flow = (
+            session.get(SalesFlows, application.sales_flow_id)
+            if application.sales_flow_id
+            else None
+        )
+        simplefi_api_key = (
+            application_flow.simplefi_api_key if application_flow else None
+        ) or (application.popup.simplefi_api_key if application.popup else None)
+        if not simplefi_api_key:
             logger.error(
                 "Popup %s does not have SimpleFI API key configured",
                 application.popup_id,
@@ -3739,7 +3757,7 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
         # Create SimpleFI payment request
         from app.services.simplefi import get_simplefi_client
 
-        simplefi_client = get_simplefi_client(application.popup.simplefi_api_key)
+        simplefi_client = get_simplefi_client(simplefi_api_key)
 
         # Build reference for SimpleFI (useful for debugging/tracking)
         reference = {
@@ -4988,9 +5006,17 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
             CancelOutcomeAmbiguousError,
         )
 
-        # Resolve the SimpleFi API key from the payment's popup
+        # Resolve the flow override first, then inherit the popup key.
         _popup = session.get(_Popups, prior.popup_id)
-        if _popup is None or not _popup.simplefi_api_key:
+        _flow = (
+            session.get(_SalesFlows, prior.sales_flow_id)
+            if prior.sales_flow_id
+            else None
+        )
+        simplefi_api_key = (_flow.simplefi_api_key if _flow else None) or (
+            _popup.simplefi_api_key if _popup else None
+        )
+        if _popup is None or not simplefi_api_key:
             # No API key: the payment was never sent to SimpleFi (orphaned).
             # Release holds anyway since there is no live link to protect.
             logger.warning(
@@ -5002,7 +5028,7 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
             self.update_status(session, prior.id, PaymentStatus.CANCELLED)
             return
 
-        simplefi_client = get_simplefi_client(_popup.simplefi_api_key)
+        simplefi_client = get_simplefi_client(simplefi_api_key)
 
         # Call SimpleFi cancel OUTSIDE any DB lock (ADR-2, ADR-3)
         try:

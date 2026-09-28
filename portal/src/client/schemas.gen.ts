@@ -24981,6 +24981,17 @@ export const SalesFlowCreateSchema = {
             ],
             title: 'Open Checkout Signing Secret'
         },
+        simplefi_api_key: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Simplefi Api Key'
+        },
         abandoned_cart_delay_days: {
             anyOf: [
                 {
@@ -25690,6 +25701,17 @@ export const SalesFlowPublicSchema = {
             ],
             title: 'Open Checkout Signing Secret'
         },
+        simplefi_api_key: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Simplefi Api Key'
+        },
         abandoned_cart_delay_days: {
             anyOf: [
                 {
@@ -26284,6 +26306,17 @@ export const SalesFlowUpdateSchema = {
                 }
             ],
             title: 'Open Checkout Signing Secret'
+        },
+        simplefi_api_key: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Simplefi Api Key'
         },
         abandoned_cart_delay_days: {
             anyOf: [
