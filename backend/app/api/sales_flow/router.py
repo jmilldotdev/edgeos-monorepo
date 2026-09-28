@@ -174,7 +174,7 @@ async def list_settings_by_type(
     """
     return FlowSettingsByType(
         settings={
-            flow_type.value: list(fields_for(flow_type.value))
+            flow_type.value: [*fields_for(flow_type.value), "simplefi_api_key"]
             for flow_type in SalesFlowType
         }
     )

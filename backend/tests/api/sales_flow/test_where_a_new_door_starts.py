@@ -631,12 +631,12 @@ class TestWhatEachKindOfFlowOffers:
     def test_it_matches_what_seeding_uses(
         self, client: TestClient, admin_token_tenant_a: str
     ) -> None:
-        """Served from `fields_for`, not from a second list beside it."""
+        """Include seeded settings plus the flow-only payment credential."""
         from app.api.sales_flow.schemas import fields_for
 
         settings = self._ask(client, admin_token_tenant_a)
         for flow_type, names in settings.items():
-            assert names == list(fields_for(flow_type))
+            assert names == [*fields_for(flow_type), "simplefi_api_key"]
 
     def test_a_flow_nobody_applies_to_is_not_asked_about_applications(
         self, client: TestClient, admin_token_tenant_a: str

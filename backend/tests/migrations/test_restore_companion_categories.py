@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from alembic import command
 from alembic.config import Config
+from sqlalchemy import text
 from sqlmodel import Session
 
 from app.alembic.versions import d6f2b8a94c31_restore_companion_categories as migration
@@ -29,6 +30,11 @@ def test_backfill_preserves_buyers_existing_categories_and_ambiguous_history(
         config.attributes["connection"] = connection
         command.upgrade(config, migration.revision)
         command.downgrade(config, migration.down_revision)
+        # This test intentionally runs at the migration's parent revision,
+        # while the ORM model reflects the later SimpleFi-key migration.
+        connection.execute(
+            text("ALTER TABLE sales_flows ADD COLUMN simplefi_api_key VARCHAR")
+        )
         with Session(bind=connection, join_transaction_mode="create_savepoint") as db:
             tenant = Tenants(name="Repair test", slug=f"repair-{uuid.uuid4()}")
             db.add(tenant)

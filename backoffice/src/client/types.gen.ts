@@ -5144,6 +5144,7 @@ export type SalesFlowCreate = {
     open_checkout_success_url?: (string | null);
     open_checkout_cancel_url?: (string | null);
     open_checkout_signing_secret?: (string | null);
+    simplefi_api_key?: (string | null);
     abandoned_cart_delay_days?: (number | null);
     abandoned_cart_repeat_days?: (number | null);
     abandoned_cart_max_count?: (number | null);
@@ -5292,6 +5293,7 @@ export type SalesFlowPublic = {
     open_checkout_success_url?: (string | null);
     open_checkout_cancel_url?: (string | null);
     open_checkout_signing_secret?: (string | null);
+    simplefi_api_key?: (string | null);
     abandoned_cart_delay_days?: (number | null);
     abandoned_cart_repeat_days?: (number | null);
     abandoned_cart_max_count?: (number | null);
@@ -5385,6 +5387,7 @@ export type SalesFlowUpdate = {
     open_checkout_success_url?: (string | null);
     open_checkout_cancel_url?: (string | null);
     open_checkout_signing_secret?: (string | null);
+    simplefi_api_key?: (string | null);
     abandoned_cart_delay_days?: (number | null);
     abandoned_cart_repeat_days?: (number | null);
     abandoned_cart_max_count?: (number | null);
