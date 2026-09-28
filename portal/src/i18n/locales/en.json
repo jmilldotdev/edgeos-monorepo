@@ -538,6 +538,7 @@
     "step_config_error_detail": "No template assigned to this step. Please contact your administrator.",
     "previous_payment_completed": "Your previous payment was completed.",
     "pending_payment_wait": "You have a pending payment. Please wait a few minutes.",
+    "concurrent_payment_in_progress": "Another checkout is in progress. Complete it or wait a moment before trying again.",
     "payment_cancel_failed": "We could not process your payment. Please try again.",
     "flow_restriction_violated": "You are not eligible to purchase from this flow.",
     "product_not_in_flow": "This product is not available through this flow.",
@@ -625,6 +626,7 @@
     "previous_payment_completed": "Your previous payment was completed.",
     "payment_cancel_failed": "We could not process your payment. Please try again.",
     "pending_payment_wait": "You have a pending payment. Please wait a few minutes.",
+    "concurrent_payment_in_progress": "Another checkout is in progress. Complete it or wait a moment before trying again.",
     "flow_restriction_violated": "You are not eligible to purchase from this flow.",
     "product_not_in_flow": "This product is not available through this flow."
   },
