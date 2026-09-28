@@ -999,6 +999,7 @@
       "subheading_with_tz": "Upcoming events at {{cityName}}, times shown in {{timezone}}",
       "empty_state": "No events yet",
       "now": "Now",
+      "live": "Live",
       "events_disabled_heading": "Events are disabled",
       "events_disabled_message": "The organizer has turned off events for {{cityName}}.",
       "part_of_recurring_series": "Part of a recurring series",
@@ -1087,13 +1088,18 @@
       "rsvp": "RSVP",
       "full": "Full",
       "cancel": "Cancel RSVP",
+      "cancel_confirm_title": "Cancel your RSVP?",
+      "cancel_confirm_body": "You'll be taken off the attendee list for this event. You can RSVP again later if there's still space.",
+      "cancel_confirm_keep": "Keep my RSVP",
+      "cancel_confirm_confirm": "Yes, cancel RSVP",
       "check_in": "Check in",
       "check_in_opens_at_start": "Check-in opens at start time",
       "registered": "Registered",
       "checked_in": "Checked in",
       "action_error": "Couldn't update your RSVP. Please try again.",
       "requires_ticket": "You need a ticket for this popup to RSVP.",
-      "application_rejected": "Your application wasn't accepted, so you can't RSVP."
+      "application_rejected": "Your application wasn't accepted, so you can't RSVP.",
+      "why_blocked": "Why can't I RSVP?"
     },
     "recurrence": {
       "daily_one": "Repeats daily",
