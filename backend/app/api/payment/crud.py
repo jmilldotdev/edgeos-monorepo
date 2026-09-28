@@ -4212,6 +4212,7 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
             is None
         ):
             raise self._fulfillment_error()
+        companion_category_id = None
         if recipient.category_id is not None:
             category = session.exec(
                 select(AttendeeCategories).where(
@@ -4226,6 +4227,8 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
                 and category.sales_flow_id != payment.sales_flow_id
             ):
                 raise self._fulfillment_error()
+            if recipient.human_id is None and not category.is_primary:
+                companion_category_id = category.id
 
         if (
             recipient.attendee_id is not None
@@ -4301,7 +4304,10 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
                 ),
                 name=recipient.name,
                 email=recipient.email,
-                category_id=None,
+                # Establish a new companion's category from the validated
+                # recipient. Buyers remain Main; existing attendees retain
+                # their category even when purchasing through another flow.
+                category_id=companion_category_id,
                 additional_data=recipient.profile_snapshot,
             )
             session.add(attendee)

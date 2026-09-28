@@ -22,6 +22,7 @@ from app.api.payment.schemas import (
     PaymentProductRequest,
     PaymentProductResponse,
     PaymentPublic,
+    PaymentRecipientRequest,
     PaymentStatus,
 )
 from app.api.popup.models import Popups
@@ -1036,7 +1037,7 @@ def test_zero_total_cumulative_limit_dedupes_existing_companion_and_blocks_new_o
     companion = db.get(Attendees, first_recipient.attendee_id)
     assert companion is not None
     assert companion.managed_by_human_id == buyer.id
-    assert companion.category_id is None
+    assert companion.category_id == category.id
 
     same_person = _request(
         application,
@@ -1222,6 +1223,46 @@ def test_application_fee_snapshots_buyer_but_accepts_no_recipients(
                 "recipients": [{"recipient_key": "x"}],
             }
         )
+
+
+@pytest.mark.parametrize("role", ["spouse", "kid"])
+@pytest.mark.parametrize("free", [False, True])
+def test_purchase_preserves_companion_category_and_buyer_main(
+    client, db, tenant_a, superadmin_token, role, free
+):
+    popup, _, buyer, category, application, product = _payment_context(db, tenant_a)
+    category.key = role
+    if free:
+        product.price = Decimal("0")
+    db.add_all([category, product])
+    db.commit()
+    request = _request(application, product, category, recipient_name="Named Companion")
+    request.recipients.append(
+        PaymentRecipientRequest(recipient_key="buyer", human_id=buyer.id, name="Buyer")
+    )
+    request.products.append(
+        PaymentProductRequest(product_id=product.id, recipient_key="buyer")
+    )
+    with patch("app.services.simplefi.get_simplefi_client") as provider:
+        provider.return_value.create_payment.return_value = _provider_response("roles")
+        payment, _ = payments_crud.create_payment(db, request)
+    payments_crud.approve_payment(db, payment.id)
+    payments_crud.approve_payment(db, payment.id)
+    attendees = db.exec(select(Attendees).where(Attendees.popup_id == popup.id)).all()
+    assert len(attendees) == 2
+    own = next(a for a in attendees if a.human_id == buyer.id)
+    companion = next(a for a in attendees if a.managed_by_human_id == buyer.id)
+    assert own.category == "main"
+    assert companion.human_id is None
+    assert companion.category_id == category.id
+    headers = {
+        "Authorization": f"Bearer {superadmin_token}",
+        "X-Tenant-Id": str(tenant_a.id),
+    }
+    detail = client.get(f"/api/v1/attendees/{companion.id}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["category"] == role
+    assert detail.json()["category_id"] == str(category.id)
 
 
 def test_open_checkout_buyer_receives_the_current_flow_primary_role(

@@ -294,7 +294,7 @@ def test_same_access_product_keeps_recipient_price_category_and_qr_lines_separat
         (
             "discount-child",
             child_category.id,
-            None,
+            child_category.id,
             Decimal("15.00"),
             child_line.id,
         ),
