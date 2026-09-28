@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 
 REVISION = "a6f4c8d2e9b1"
 PREVIOUS_REVISION = "e4a7c2d9b1f6"
-HEAD_REVISION = "c6f1a8e4d2b7"
+HEAD_REVISION = "c4e81a2d7f90"
 TABLE = "payment_products"
 LEGACY_CONSTRAINT = "ck_payment_product_has_recipient_or_attendee"
 COMPATIBILITY_CONSTRAINT = "ck_payment_product_fulfillment_identity_compatibility"
