@@ -2298,6 +2298,50 @@ export type EventCalendarTrack = {
 };
 
 /**
+ * Everything the QR success screen renders, resolved server-side.
+ *
+ * Lets the portal paint the result from the check-in response alone: the
+ * landing page performs one POST and no follow-up GET, so a scan is a
+ * single round trip even on a phone on venue wifi.
+ */
+export type EventCheckInEvent = {
+    id: string;
+    title: string;
+    cover_url?: (string | null);
+    host_display_name?: (string | null);
+    start_time: string;
+    end_time: string;
+    timezone: string;
+    venue_title?: (string | null);
+    occurrence_start?: (string | null);
+    popup_slug: string;
+};
+
+/**
+ * The portal URL an event's organizer shows as a QR for attendees to scan.
+ *
+ * Served only to the event's managers, so the portal can gate the QR panel
+ * on a real server-side permission check instead of hiding a UI element.
+ * The URL itself is not a secret — it carries no token and is deliberately
+ * fixed and shareable (see the product limitation in SIM-103) — but who
+ * gets handed it is still a decision the backend makes.
+ */
+export type EventCheckInLink = {
+    url: string;
+    occurrence_start?: (string | null);
+};
+
+/**
+ * Outcome of a QR check-in.
+ */
+export type EventCheckInResult = {
+    participant: EventParticipantPublic;
+    already_checked_in?: boolean;
+    created?: boolean;
+    event: EventCheckInEvent;
+};
+
+/**
  * Slim human projection for an event's collaborator chips in the portal.
  *
  * Mirrors ``HumanPortalPublic`` so the same picker/avatar rendering works
@@ -7756,7 +7800,7 @@ export type EventParticipantsCheckInData = {
     requestBody?: (RegisterRequest | null);
 };
 
-export type EventParticipantsCheckInResponse = (EventParticipantPublic);
+export type EventParticipantsCheckInResponse = (EventCheckInResult);
 
 export type EventsListPublicCalendarData = {
     /**
@@ -8098,6 +8142,13 @@ export type EventsCancelPortalEventData = {
 };
 
 export type EventsCancelPortalEventResponse = (EventPublic);
+
+export type EventsGetPortalEventCheckInLinkData = {
+    eventId: string;
+    occurrenceStart?: (string | null);
+};
+
+export type EventsGetPortalEventCheckInLinkResponse = (EventCheckInLink);
 
 export type EventsExportPortalEventIcsData = {
     eventId: string;

@@ -2,6 +2,7 @@ import re
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -25,6 +26,7 @@ from app.api.event.schemas import (
     EventAvailabilityResult,
     EventCalendarMeta,
     EventCalendarTrack,
+    EventCheckInLink,
     EventCollaboratorPublic,
     EventCreate,
     EventHostOption,
@@ -3851,6 +3853,67 @@ async def cancel_portal_event(
         actor=actor_from_human(current_human),
     )
     return _to_public(updated)
+
+
+@router.get(
+    "/portal/events/{event_id}/check-in-link",
+    response_model=EventCheckInLink,
+    summary="Portal URL an organizer shows as a QR for event check-in",
+)
+async def get_portal_event_check_in_link(
+    event_id: uuid.UUID,
+    db: HumanTenantSession,
+    current_human: CurrentHuman,
+    token_payload: CallerToken,
+    occurrence_start: datetime | None = None,
+) -> EventCheckInLink:
+    """Build the check-in URL for an event, for its managers only.
+
+    The event's owner, its assigned host and its collaborators all get it,
+    with or without an RSVP — they are running the event, not attending it.
+    Everyone else gets 403, which is what the portal's QR panel keys on: it
+    renders only when this call succeeds, so the gate is a server decision
+    rather than a hidden div.
+
+    ``host_display_name`` is a label shown to attendees and grants nothing.
+
+    Not to be confused with the gathering's ticket self check-in QR
+    (``/portal/{slug}/check-in``) — that one says "this person arrived at
+    the popup", this one says "this person attended this event".
+    """
+    event = crud.events_crud.get(db, event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    ensure_api_key_popup(token_payload, event.popup_id)
+    from app.services.event_visibility import ensure_event_visible_to_human
+
+    ensure_event_visible_to_human(db, event, current_human)
+
+    if not _human_id_manages_event(event, current_human.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the event's host or collaborators can view the check-in QR",
+        )
+
+    from app.api.popup.crud import popups_crud
+    from app.api.tenant.utils import get_portal_url
+
+    popup = popups_crud.get(db, event.popup_id)
+    if popup is None or popup.tenant is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Recurring series need the occurrence baked into the QR, otherwise the
+    # scan would land on the master and record attendance for the wrong date.
+    # A master reached without ?occ= is its own first occurrence.
+    occ = occurrence_start
+    if event.rrule and occ is None:
+        occ = event.start_time
+
+    base = get_portal_url(popup.tenant).rstrip("/")
+    url = f"{base}/portal/{popup.slug}/events/{event.id}/check-in"
+    if occ is not None:
+        url = f"{url}?occ={quote(occ.isoformat(), safe='')}"
+    return EventCheckInLink(url=url, occurrence_start=occ)
 
 
 @router.get(

@@ -66,6 +66,7 @@ import { cn } from "@/lib/utils"
 import { useCityProvider } from "@/providers/cityProvider"
 import { AddToCalendarModal } from "../lib/AddToCalendarModal"
 import { CoverImage } from "../lib/CoverImage"
+import { EventCheckInQr } from "../lib/EventCheckInQr"
 import { EventMessages } from "../lib/EventMessages"
 import { canManageEvent } from "../lib/eventPermissions"
 import { RsvpBlockedCta } from "../lib/RsvpBlockedCta"
@@ -343,16 +344,6 @@ export default function EventDetailPage() {
     },
   })
 
-  const checkInMutation = useMutation({
-    mutationFn: () =>
-      EventParticipantsService.checkIn({
-        eventId: params.eventId,
-        requestBody: rsvpBody,
-      }),
-    onSuccess: invalidateRsvpQueries,
-    onError: toastRsvpError,
-  })
-
   const { data: invitations = [] } = useQuery<EventInvitationPublic[]>({
     queryKey: ["portal-event-invitations", params.eventId],
     queryFn: () =>
@@ -463,10 +454,7 @@ export default function EventDetailPage() {
     )
   }
 
-  const isPending =
-    registerMutation.isPending ||
-    cancelMutation.isPending ||
-    checkInMutation.isPending
+  const isPending = registerMutation.isPending || cancelMutation.isPending
 
   // Effective start/end: if `?occ=<iso>` is present, this is a recurring
   // occurrence — shift end_time by (master end - master start) to preserve
@@ -478,7 +466,6 @@ export default function EventDetailPage() {
       new Date(event.end_time).getTime() - new Date(event.start_time).getTime()
     return new Date(new Date(occParam).getTime() + masterDuration).toISOString()
   })()
-  const eventStarted = new Date(effectiveStartTime) <= new Date()
 
   const coverUrl =
     event.cover_url ||
@@ -724,30 +711,21 @@ export default function EventDetailPage() {
           <div className="absolute top-3 right-3 w-48 sm:w-60">
             <div className="flex flex-col items-end gap-1.5">
               {isRsvped ? (
-                <>
-                  <RsvpStatusAction
-                    size="default"
-                    label={
-                      myRsvpStatus === "checked_in"
-                        ? (t("events.rsvp.checked_in") as string)
-                        : (t("events.rsvp.going") as string)
-                    }
-                    showCancel={!isEnded && myRsvpStatus === "registered"}
-                    isPending={isPending}
-                    onCancelRsvp={() => cancelMutation.mutate()}
-                  />
-                  {!isEnded &&
-                    myRsvpStatus === "registered" &&
-                    eventStarted && (
-                      <Button
-                        size="sm"
-                        onClick={() => checkInMutation.mutate()}
-                        disabled={isPending}
-                      >
-                        {t("events.rsvp.check_in")}
-                      </Button>
-                    )}
-                </>
+                // Attendance is recorded by scanning the organizer's QR
+                // (see events/[eventId]/check-in), never from a button here:
+                // a self-serve button let anyone mark themselves present from
+                // anywhere, with no organizer in the loop at all.
+                <RsvpStatusAction
+                  size="default"
+                  label={
+                    myRsvpStatus === "checked_in"
+                      ? (t("events.rsvp.checked_in") as string)
+                      : (t("events.rsvp.going") as string)
+                  }
+                  showCancel={!isEnded && myRsvpStatus === "registered"}
+                  isPending={isPending}
+                  onCancelRsvp={() => cancelMutation.mutate()}
+                />
               ) : isEnded ? null : isFull ? (
                 <Button
                   disabled
@@ -1025,16 +1003,16 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* Cancel RSVP now lives beside the "Going" status in the details card.
-          Only the check-in hint remains here. */}
-      {!isEnded &&
-        event.status === "published" &&
-        myRsvpStatus === "registered" &&
-        !eventStarted && (
-          <p className="text-xs text-muted-foreground">
-            {t("events.rsvp.check_in_opens_at_start")}
-          </p>
-        )}
+      {/* Managers only (owner / host / collaborators): the QR attendees scan
+          to check themselves in. Gated server-side — the panel renders only
+          when the check-in-link endpoint answers. */}
+      {event.status === "published" && !isEnded && (
+        <EventCheckInQr
+          eventId={params.eventId}
+          occurrenceStart={event.rrule ? effectiveStartTime : null}
+          canManage={canManage}
+        />
+      )}
 
       {/* Managers only (owner / host / collaborators): paste attendees to invite */}
       {canManage && !isEnded && (

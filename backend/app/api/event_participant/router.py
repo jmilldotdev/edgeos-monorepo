@@ -5,8 +5,18 @@ from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
 from app.api.event_participant import crud
+from app.api.event_participant.check_in import (
+    ensure_check_in_window_open,
+    is_scheduled_occurrence,
+    lock_event_for_capacity,
+    perform_check_in,
+    reject,
+    resolve_occurrence_window,
+)
 from app.api.event_participant.schemas import (
     AttendeeEmailsResponse,
+    EventCheckInEvent,
+    EventCheckInResult,
     EventParticipantCreate,
     EventParticipantPublic,
     EventParticipantUpdate,
@@ -230,40 +240,13 @@ def _resolve_occurrence_start(
     if (
         require_scheduled
         and occurrence_start is not None
-        and not _is_scheduled_occurrence(event, occurrence_start)
+        and not is_scheduled_occurrence(event, occurrence_start)
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="occurrence_start does not match a scheduled occurrence",
         )
     return occurrence_start
-
-
-def _is_scheduled_occurrence(event, occurrence_start: datetime) -> bool:
-    from app.api.event.recurrence import expand, parse_rrule
-
-    try:
-        rule = parse_rrule(event.rrule)
-    except ValueError:
-        return False
-    if rule is None:
-        return False
-    occ = (
-        occurrence_start
-        if occurrence_start.tzinfo is not None
-        else occurrence_start.replace(tzinfo=UTC)
-    )
-    return bool(
-        expand(
-            dtstart=event.start_time,
-            rule=rule,
-            window_start=occ,
-            window_end=occ,
-            exdates=list(event.recurrence_exdates or []),
-            max_occurrences=1,
-            timezone=event.timezone,
-        )
-    )
 
 
 @router.get("/portal/eligibility/{popup_id}", response_model=RsvpEligibility)
@@ -448,6 +431,12 @@ async def register_for_event(
         event, body.occurrence_start if body else None, require_scheduled=True
     )
 
+    # Serialize the read-modify-write below against every other seat-taking
+    # write for this event (another RSVP, or a QR check-in that creates the
+    # participation). Without it the count-then-insert can interleave and
+    # two callers both take the last seat. See lock_event_for_capacity.
+    lock_event_for_capacity(db, event_id)
+
     existing = crud.event_participants_crud.get_by_event_and_profile(
         db, event_id, current_human.id, occurrence_start=occ_start
     )
@@ -594,42 +583,118 @@ async def cancel_registration(
     return EventParticipantPublic.model_validate(existing)
 
 
-@router.post("/portal/check-in/{event_id}", response_model=EventParticipantPublic)
+@router.post(
+    "/portal/check-in/{event_id}",
+    response_model=EventCheckInResult,
+    summary="Check in to an event by scanning the organizer's QR",
+    # JWT path: only the portal:* wildcard (regular portal users) passes, so
+    # a third-party JWT cannot mark attendance. API keys never reach here at
+    # all — the route is absent from _PAT_ROUTE_POLICIES, which fails closed.
+    dependencies=[needs("portal:*")],
+)
 async def check_in(
     event_id: uuid.UUID,
     db: HumanTenantSession,
     current_human: CurrentHuman,
+    token_payload: CallerToken,
     body: RegisterRequest | None = None,
-) -> EventParticipantPublic:
-    """Check in current human for an event (portal)."""
+) -> EventCheckInResult:
+    """Register the caller's attendance at an event (portal).
+
+    The single write behind the organizer's QR. Reached by scanning a fixed
+    portal URL, so it cannot assume a prior RSVP: when there is no
+    participation it creates one directly as ``checked_in``.
+
+    Every failure carries a ``{"code", "message"}`` detail so the landing
+    page can show the right sentence without matching English strings.
+    """
     from app.api.event.crud import events_crud
+    from app.api.event.schemas import EventStatus
+    from app.api.event_settings.crud import event_settings_crud
     from app.api.popup.crud import popups_crud
+    from app.services.event_visibility import ensure_event_visible_to_human
 
     event = events_crud.get(db, event_id)
     if not event:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
-    ensure_popup_writable(popups_crud.get(db, event.popup_id))
-    occ_start = _resolve_occurrence_start(
-        event, body.occurrence_start if body else None
-    )
+    ensure_api_key_popup(token_payload, event.popup_id)
 
-    existing = crud.event_participants_crud.get_by_event_and_profile(
-        db, event_id, current_human.id, occurrence_start=occ_start
-    )
-    if not existing or existing.status == ParticipantStatus.CANCELLED:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="No active registration found"
-        )
-    if existing.status == ParticipantStatus.CHECKED_IN:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Already checked in"
+    popup = popups_crud.get(db, event.popup_id)
+    ensure_popup_writable(popup)
+
+    settings = event_settings_crud.get_by_popup_id(db, event.popup_id)
+    if settings and not settings.event_enabled:
+        raise reject(
+            status.HTTP_403_FORBIDDEN,
+            "events_disabled",
+            "Events are disabled for this popup.",
         )
 
-    existing.status = ParticipantStatus.CHECKED_IN
-    existing.check_time = datetime.now(UTC)
-    db.add(existing)
-    db.commit()
-    db.refresh(existing)
-    return EventParticipantPublic.model_validate(existing)
+    if event.status != EventStatus.PUBLISHED:
+        raise reject(
+            status.HTTP_400_BAD_REQUEST,
+            "event_not_published",
+            "This event is not published.",
+        )
+
+    # 404s for a private event the caller was never invited to, so the QR
+    # leaks nothing to someone who was merely forwarded the link.
+    ensure_event_visible_to_human(db, event, current_human)
+
+    # The shared resolver answers with plain developer strings ("occurrence_start
+    # is required for recurring events"). Every other caller is a UI acting on
+    # its own data; here the detail reaches whoever just pointed a phone at a
+    # QR, so mismatches are re-raised under the code the landing page localizes.
+    try:
+        occ_start = _resolve_occurrence_start(
+            event, body.occurrence_start if body else None
+        )
+    except HTTPException as exc:
+        if exc.status_code != status.HTTP_400_BAD_REQUEST:
+            raise
+        raise reject(
+            status.HTTP_400_BAD_REQUEST,
+            "occurrence_not_scheduled",
+            "This link does not point at a scheduled date of this event.",
+        ) from exc
+
+    window_start, window_end = resolve_occurrence_window(event, occ_start)
+    ensure_check_in_window_open(window_start, window_end)
+
+    participant, already_checked_in, created = perform_check_in(
+        db, event, current_human, occ_start
+    )
+
+    return EventCheckInResult(
+        participant=EventParticipantPublic.model_validate(participant),
+        already_checked_in=already_checked_in,
+        created=created,
+        event=EventCheckInEvent(
+            id=event.id,
+            title=event.title,
+            cover_url=_check_in_cover_url(event, settings),
+            host_display_name=event.host_display_name,
+            start_time=window_start,
+            end_time=window_end,
+            timezone=event.timezone,
+            venue_title=event.venue.title if event.venue else None,
+            occurrence_start=occ_start,
+            popup_slug=popup.slug if popup else "",
+        ),
+    )
+
+
+def _check_in_cover_url(event, settings) -> str | None:
+    """The image the success screen shows.
+
+    Same fallback chain the portal's event detail applies (own cover, then
+    the venue photo, then the popup-wide placeholder), resolved here so the
+    landing page needs no second request to render.
+    """
+    if event.cover_url:
+        return event.cover_url
+    if event.venue is not None and event.venue.image_url:
+        return event.venue.image_url
+    return settings.placeholder_url if settings else None

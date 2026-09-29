@@ -10311,6 +10311,147 @@ export const EventCalendarTrackSchema = {
     description: 'Minimal track projection for the public calendar toolbar.'
 } as const;
 
+export const EventCheckInEventSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        title: {
+            type: 'string',
+            title: 'Title'
+        },
+        cover_url: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Cover Url'
+        },
+        host_display_name: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Host Display Name'
+        },
+        start_time: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Start Time'
+        },
+        end_time: {
+            type: 'string',
+            format: 'date-time',
+            title: 'End Time'
+        },
+        timezone: {
+            type: 'string',
+            title: 'Timezone'
+        },
+        venue_title: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Venue Title'
+        },
+        occurrence_start: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Occurrence Start'
+        },
+        popup_slug: {
+            type: 'string',
+            title: 'Popup Slug'
+        }
+    },
+    type: 'object',
+    required: ['id', 'title', 'start_time', 'end_time', 'timezone', 'popup_slug'],
+    title: 'EventCheckInEvent',
+    description: `Everything the QR success screen renders, resolved server-side.
+
+Lets the portal paint the result from the check-in response alone: the
+landing page performs one POST and no follow-up GET, so a scan is a
+single round trip even on a phone on venue wifi.`
+} as const;
+
+export const EventCheckInLinkSchema = {
+    properties: {
+        url: {
+            type: 'string',
+            title: 'Url'
+        },
+        occurrence_start: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Occurrence Start'
+        }
+    },
+    type: 'object',
+    required: ['url'],
+    title: 'EventCheckInLink',
+    description: `The portal URL an event's organizer shows as a QR for attendees to scan.
+
+Served only to the event's managers, so the portal can gate the QR panel
+on a real server-side permission check instead of hiding a UI element.
+The URL itself is not a secret — it carries no token and is deliberately
+fixed and shareable (see the product limitation in SIM-103) — but who
+gets handed it is still a decision the backend makes.`
+} as const;
+
+export const EventCheckInResultSchema = {
+    properties: {
+        participant: {
+            '$ref': '#/components/schemas/EventParticipantPublic'
+        },
+        already_checked_in: {
+            type: 'boolean',
+            title: 'Already Checked In',
+            default: false
+        },
+        created: {
+            type: 'boolean',
+            title: 'Created',
+            default: false
+        },
+        event: {
+            '$ref': '#/components/schemas/EventCheckInEvent'
+        }
+    },
+    type: 'object',
+    required: ['participant', 'event'],
+    title: 'EventCheckInResult',
+    description: 'Outcome of a QR check-in.'
+} as const;
+
 export const EventCollaboratorPublicSchema = {
     properties: {
         id: {
