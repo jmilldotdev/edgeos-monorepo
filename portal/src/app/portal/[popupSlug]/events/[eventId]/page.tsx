@@ -233,6 +233,7 @@ export default function EventDetailPage() {
   )
 
   const canManage = !!event && canManageEvent(event, currentHuman?.id)
+  const isEventHost = !!event && event.host_id === currentHuman?.id
 
   // Ended popups are read-only in the portal: every write affordance (RSVP,
   // check-in, edit, cancel, invitations) is hidden. Mirrors the backend
@@ -707,7 +708,7 @@ export default function EventDetailPage() {
             "Going + Cancel RSVP" group both land inside it, so switching
             states never reflows the card. The rows below reserve the
             matching horizontal padding. */}
-        {event.status === "published" && (
+        {event.status === "published" && !isEventHost && (
           <div className="absolute top-3 right-3 w-48 sm:w-60">
             <div className="flex flex-col items-end gap-1.5">
               {isRsvped ? (
