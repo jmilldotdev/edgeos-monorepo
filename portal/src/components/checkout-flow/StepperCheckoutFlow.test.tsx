@@ -20,15 +20,6 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }))
 
-// next/font/google relies on the Next.js SWC compiler plugin and throws
-// when imported through plain Vite/Vitest — stub it with the shape
-// StepperCheckoutFlow/fonts.ts actually reads (`.variable`).
-vi.mock("next/font/google", () => ({
-  Amarante: () => ({ variable: "--font-amanita-display" }),
-  Oswald: () => ({ variable: "--font-amanita-condensed" }),
-  Quicksand: () => ({ variable: "--font-amanita-sans" }),
-}))
-
 let amanitaConfirmProps: Record<string, unknown> | null = null
 
 vi.mock("@/providers/checkoutProvider", () => ({
