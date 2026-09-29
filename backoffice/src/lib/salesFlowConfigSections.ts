@@ -19,13 +19,27 @@ export interface ConfigFieldConfig {
   options?: { value: string; label: string }[]
 }
 
-type FlowOnlyConfigKey = "cross_popup_referrals_enabled"
+type FlowOnlyConfigKey = "cross_popup_referrals_enabled" | "simplefi_api_key"
 
 export const CONFIG_SECTIONS: {
   title: string
   description?: string
   fields: ConfigFieldConfig[]
 }[] = [
+  {
+    title: "Payment Provider",
+    description:
+      "Leave empty to use the SimpleFi API key configured on the popup.",
+    fields: [
+      {
+        key: "simplefi_api_key",
+        label: "SimpleFi API Key",
+        description:
+          "Overrides the popup's SimpleFi account for purchases and payment operations through this flow.",
+        kind: "secret",
+      },
+    ],
+  },
   {
     title: "Application Settings",
     fields: [

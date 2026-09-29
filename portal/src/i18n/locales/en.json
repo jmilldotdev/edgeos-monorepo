@@ -538,6 +538,7 @@
     "step_config_error_detail": "No template assigned to this step. Please contact your administrator.",
     "previous_payment_completed": "Your previous payment was completed.",
     "pending_payment_wait": "You have a pending payment. Please wait a few minutes.",
+    "concurrent_payment_in_progress": "Another checkout is in progress. Complete it or wait a moment before trying again.",
     "payment_cancel_failed": "We could not process your payment. Please try again.",
     "flow_restriction_violated": "You are not eligible to purchase from this flow.",
     "product_not_in_flow": "This product is not available through this flow.",
@@ -625,6 +626,7 @@
     "previous_payment_completed": "Your previous payment was completed.",
     "payment_cancel_failed": "We could not process your payment. Please try again.",
     "pending_payment_wait": "You have a pending payment. Please wait a few minutes.",
+    "concurrent_payment_in_progress": "Another checkout is in progress. Complete it or wait a moment before trying again.",
     "flow_restriction_violated": "You are not eligible to purchase from this flow.",
     "product_not_in_flow": "This product is not available through this flow."
   },
@@ -962,6 +964,26 @@
     "error": "Error"
   },
   "events": {
+    "messages": {
+      "heading": "Contact attendees",
+      "message": "Message",
+      "audience_all": "Send an email to all active RSVPs who still have access to this gathering.",
+      "audience_occurrence": "Send an email to active RSVPs for this occurrence who still have access to this gathering.",
+      "send": "Send message",
+      "sending": "Sending…",
+      "sent": "Message sent to {{count}} attendees.",
+      "send_error": "Could not send the message. Check that the event has eligible attendees and try again.",
+      "history": "Message history",
+      "refresh": "Refresh",
+      "loading": "Loading messages…",
+      "history_error": "Could not load message history.",
+      "empty": "No messages yet.",
+      "result": "Sent: {{sent}}. Failed: {{failed}}.",
+      "incomplete": "Delivery has not finished. Refresh the history to check its progress.",
+      "occurrence": "Occurrence: {{date}}",
+      "previous": "Previous",
+      "next": "Next"
+    },
     "common": {
       "back_to_events": "Back to events",
       "no_open_hours": "No open hours",
@@ -977,6 +999,7 @@
       "subheading_with_tz": "Upcoming events at {{cityName}}, times shown in {{timezone}}",
       "empty_state": "No events yet",
       "now": "Now",
+      "live": "Live",
       "events_disabled_heading": "Events are disabled",
       "events_disabled_message": "The organizer has turned off events for {{cityName}}.",
       "part_of_recurring_series": "Part of a recurring series",
@@ -1065,13 +1088,18 @@
       "rsvp": "RSVP",
       "full": "Full",
       "cancel": "Cancel RSVP",
+      "cancel_confirm_title": "Cancel your RSVP?",
+      "cancel_confirm_body": "You'll be taken off the attendee list for this event. You can RSVP again later if there's still space.",
+      "cancel_confirm_keep": "Keep my RSVP",
+      "cancel_confirm_confirm": "Yes, cancel RSVP",
       "check_in": "Check in",
       "check_in_opens_at_start": "Check-in opens at start time",
       "registered": "Registered",
       "checked_in": "Checked in",
       "action_error": "Couldn't update your RSVP. Please try again.",
       "requires_ticket": "You need a ticket for this popup to RSVP.",
-      "application_rejected": "Your application wasn't accepted, so you can't RSVP."
+      "application_rejected": "Your application wasn't accepted, so you can't RSVP.",
+      "why_blocked": "Why can't I RSVP?"
     },
     "recurrence": {
       "daily_one": "Repeats daily",

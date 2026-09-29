@@ -213,6 +213,9 @@ class SalesFlowBase(SQLModel):
     open_checkout_success_url: str | None = Field(default=None, nullable=True)
     open_checkout_cancel_url: str | None = Field(default=None, nullable=True)
     open_checkout_signing_secret: str | None = Field(default=None, nullable=True)
+    # NULL inherits the popup's SimpleFi account; a value routes this flow's
+    # new payments and payment operations through its own account.
+    simplefi_api_key: str | None = Field(default=None, nullable=True)
     abandoned_cart_delay_days: int | None = Field(default=None, nullable=True)
     abandoned_cart_repeat_days: int | None = Field(default=None, nullable=True)
     abandoned_cart_max_count: int | None = Field(default=None, nullable=True)
@@ -265,6 +268,7 @@ class SalesFlowCreate(BaseModel):
     open_checkout_success_url: str | None = None
     open_checkout_cancel_url: str | None = None
     open_checkout_signing_secret: str | None = None
+    simplefi_api_key: str | None = None
     abandoned_cart_delay_days: int | None = None
     abandoned_cart_repeat_days: int | None = None
     abandoned_cart_max_count: int | None = None
@@ -346,6 +350,7 @@ class SalesFlowUpdate(BaseModel):
     open_checkout_success_url: str | None = None
     open_checkout_cancel_url: str | None = None
     open_checkout_signing_secret: str | None = None
+    simplefi_api_key: str | None = None
     abandoned_cart_delay_days: int | None = None
     abandoned_cart_repeat_days: int | None = None
     abandoned_cart_max_count: int | None = None

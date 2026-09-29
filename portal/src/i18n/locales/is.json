@@ -462,6 +462,7 @@
     "step_config_error_detail": "Ekkert sniðmát er tengt þessu skrefi. Hafðu samband við stjórnanda.",
     "previous_payment_completed": "Fyrri greiðsla þín var lokið.",
     "pending_payment_wait": "Þú ert með greiðslu í bið. Bíddu í nokkrar mínútur.",
+    "concurrent_payment_in_progress": "Önnur kaup eru í gangi. Ljúktu þeim eða bíddu aðeins áður en þú reynir aftur.",
     "payment_cancel_failed": "Okkur tókst ekki að afgreiða greiðsluna. Reyndu aftur.",
     "flow_restriction_violated": "Þú uppfyllir ekki skilyrði til að kaupa í gegnum þessa leið.",
     "product_not_in_flow": "Þessi vara er ekki í boði í gegnum þessa leið.",
@@ -497,6 +498,7 @@
     "previous_payment_completed": "Fyrri greiðsla þín var lokið.",
     "payment_cancel_failed": "Okkur tókst ekki að afgreiða greiðsluna. Reyndu aftur.",
     "pending_payment_wait": "Þú ert með greiðslu í bið. Bíddu í nokkrar mínútur.",
+    "concurrent_payment_in_progress": "Önnur kaup eru í gangi. Ljúktu þeim eða bíddu aðeins áður en þú reynir aftur.",
     "flow_restriction_violated": "Þú uppfyllir ekki skilyrði til að kaupa í gegnum þessa leið.",
     "product_not_in_flow": "Þessi vara er ekki í boði í gegnum þessa leið."
   },
@@ -828,6 +830,26 @@
     "error": "Villa"
   },
   "events": {
+    "messages": {
+      "heading": "Hafa samband við þátttakendur",
+      "message": "Skilaboð",
+      "audience_all": "Sendu tölvupóst til skráðra þátttakenda sem hafa enn aðgang að samkomunni.",
+      "audience_occurrence": "Sendu tölvupóst til þátttakenda sem eru skráðir á þennan viðburðardag og hafa enn aðgang að samkomunni.",
+      "send": "Senda skilaboð",
+      "sending": "Sendi…",
+      "sent": "Skilaboð send til {{count}} þátttakenda.",
+      "send_error": "Ekki tókst að senda skilaboðin. Athugaðu hvort þátttakendur hafi gildan aðgang og reyndu aftur.",
+      "history": "Skilaboðasaga",
+      "refresh": "Endurnýja",
+      "loading": "Hleð skilaboðum…",
+      "history_error": "Ekki tókst að hlaða skilaboðasögu.",
+      "empty": "Engin skilaboð enn.",
+      "result": "Sent: {{sent}}. Mistókst: {{failed}}.",
+      "incomplete": "Sendingu er ekki lokið. Endurnýjaðu söguna til að sjá framvinduna.",
+      "occurrence": "Viðburðardagur: {{date}}",
+      "previous": "Fyrri",
+      "next": "Næsta"
+    },
     "common": {
       "back_to_events": "Til baka á viðburði",
       "no_open_hours": "Engir opnunartímar",
@@ -842,6 +864,8 @@
       "subheading": "Komandi viðburðir í {{cityName}}",
       "subheading_with_tz": "Komandi viðburðir í {{cityName}}, tímar sýndir í {{timezone}}",
       "empty_state": "Engir viðburðir enn",
+      "now": "Núna",
+      "live": "Í gangi",
       "events_disabled_heading": "Viðburðir eru óvirkir",
       "events_disabled_message": "Skipuleggjandinn hefur slökkt á viðburðum fyrir {{cityName}}.",
       "part_of_recurring_series": "Hluti af endurteknum röð",
@@ -930,13 +954,18 @@
       "rsvp": "RSVP",
       "full": "Fullbókað",
       "cancel": "Hætta við RSVP",
+      "cancel_confirm_title": "Hætta við RSVP?",
+      "cancel_confirm_body": "Þú verður tekin(n) af þátttakendalista þessa viðburðar. Þú getur skráð þig aftur síðar ef enn er pláss.",
+      "cancel_confirm_keep": "Halda RSVP",
+      "cancel_confirm_confirm": "Já, hætta við RSVP",
       "check_in": "Innrita",
       "check_in_opens_at_start": "Innritun opnar á upphafstíma",
       "registered": "Skráður",
       "checked_in": "Innritaður",
       "action_error": "Ekki tókst að uppfæra RSVP. Vinsamlegast reyndu aftur.",
       "requires_ticket": "Þú þarft miða fyrir þennan viðburð til að skrá þig.",
-      "application_rejected": "Umsókn þín var ekki samþykkt, svo þú getur ekki skráð þig."
+      "application_rejected": "Umsókn þín var ekki samþykkt, svo þú getur ekki skráð þig.",
+      "why_blocked": "Af hverju get ég ekki skráð mig?"
     },
     "login_required": {
       "title": "Skráðu þig inn til að sjá þennan viðburð",

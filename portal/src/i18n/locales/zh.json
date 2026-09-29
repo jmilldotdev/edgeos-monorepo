@@ -471,6 +471,7 @@
     "step_config_error_detail": "此步骤未分配模板。请联系管理员。",
     "previous_payment_completed": "您之前的付款已完成。",
     "pending_payment_wait": "您有一笔待处理的付款，请等待几分钟。",
+    "concurrent_payment_in_progress": "另一笔订单正在处理中。请完成该订单，或稍等片刻后重试。",
     "payment_cancel_failed": "我们无法处理您的付款，请重试。",
     "flow_restriction_violated": "您不符合通过此渠道购买的条件。",
     "product_not_in_flow": "此商品无法通过此渠道购买。",
@@ -506,6 +507,7 @@
     "previous_payment_completed": "您之前的付款已完成。",
     "payment_cancel_failed": "我们无法处理您的付款，请重试。",
     "pending_payment_wait": "您有一笔待处理的付款，请等待几分钟。",
+    "concurrent_payment_in_progress": "另一笔订单正在处理中。请完成该订单，或稍等片刻后重试。",
     "flow_restriction_violated": "您不符合通过此渠道购买的条件。",
     "product_not_in_flow": "此商品无法通过此渠道购买。"
   },
@@ -837,6 +839,26 @@
     "error": "错误"
   },
   "events": {
+    "messages": {
+      "heading": "联系参与者",
+      "message": "消息",
+      "audience_all": "向仍有本次聚会访问权限且报名有效的参与者发送电子邮件。",
+      "audience_occurrence": "向仍有本次聚会访问权限且已报名本场活动的参与者发送电子邮件。",
+      "send": "发送消息",
+      "sending": "发送中…",
+      "sent": "已向 {{count}} 位参与者发送消息。",
+      "send_error": "无法发送消息。请确认活动有具备有效访问权限的参与者，然后重试。",
+      "history": "消息历史",
+      "refresh": "刷新",
+      "loading": "正在加载消息…",
+      "history_error": "无法加载消息历史。",
+      "empty": "暂无消息。",
+      "result": "已发送：{{sent}}。失败：{{failed}}。",
+      "incomplete": "发送尚未完成。请刷新历史记录以查看进度。",
+      "occurrence": "活动场次：{{date}}",
+      "previous": "上一页",
+      "next": "下一页"
+    },
     "common": {
       "back_to_events": "返回活动列表",
       "no_open_hours": "无营业时间",
@@ -851,6 +873,8 @@
       "subheading": "{{cityName}} 即将举行的活动",
       "subheading_with_tz": "{{cityName}} 即将举行的活动，时间显示为 {{timezone}}",
       "empty_state": "暂无活动",
+      "now": "现在",
+      "live": "进行中",
       "events_disabled_heading": "活动已停用",
       "events_disabled_message": "组织者已关闭 {{cityName}} 的活动功能。",
       "part_of_recurring_series": "周期活动的一部分",
@@ -939,13 +963,18 @@
       "rsvp": "报名",
       "full": "已满",
       "cancel": "取消报名",
+      "cancel_confirm_title": "要取消报名吗？",
+      "cancel_confirm_body": "你将从该活动的参加者名单中移除。如果之后仍有名额，可以重新报名。",
+      "cancel_confirm_keep": "保留报名",
+      "cancel_confirm_confirm": "确认取消报名",
       "check_in": "签到",
       "check_in_opens_at_start": "签到将在活动开始时开放",
       "registered": "已登记",
       "checked_in": "已签到",
       "action_error": "无法更新你的报名，请稍后重试。",
       "requires_ticket": "你需要持有该活动的票才能报名。",
-      "application_rejected": "你的申请未获通过，无法报名。"
+      "application_rejected": "你的申请未获通过，无法报名。",
+      "why_blocked": "为什么我无法报名？"
     },
     "login_required": {
       "title": "登录以查看此活动",
