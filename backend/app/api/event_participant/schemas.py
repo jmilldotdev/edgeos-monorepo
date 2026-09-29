@@ -92,6 +92,43 @@ class RegisterRequest(BaseModel):
     occurrence_start: datetime | None = None
 
 
+class EventCheckInEvent(BaseModel):
+    """Everything the QR success screen renders, resolved server-side.
+
+    Lets the portal paint the result from the check-in response alone: the
+    landing page performs one POST and no follow-up GET, so a scan is a
+    single round trip even on a phone on venue wifi.
+    """
+
+    id: uuid.UUID
+    title: str
+    # Already resolved through the portal's own fallback chain:
+    # event cover -> venue image -> the popup's placeholder -> None.
+    cover_url: str | None = None
+    host_display_name: str | None = None
+    start_time: datetime
+    end_time: datetime
+    timezone: str
+    venue_title: str | None = None
+    # Echoed back so the "view event" link points at the occurrence that was
+    # checked into, not at the series master.
+    occurrence_start: datetime | None = None
+    popup_slug: str
+
+
+class EventCheckInResult(BaseModel):
+    """Outcome of a QR check-in."""
+
+    participant: EventParticipantPublic
+    # True when the scan found an existing checked-in row. The screen shows
+    # success either way; this only changes the wording.
+    already_checked_in: bool = False
+    # True when the participation did not exist and was created by this scan
+    # (i.e. check-in without a prior RSVP).
+    created: bool = False
+    event: EventCheckInEvent
+
+
 class AttendeeEmailsResponse(BaseModel):
     """Active RSVPers' emails for an event, for its managers (portal).
 

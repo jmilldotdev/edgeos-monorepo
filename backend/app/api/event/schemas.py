@@ -330,6 +330,22 @@ class EventHostOption(BaseModel):
     email: str
 
 
+class EventCheckInLink(BaseModel):
+    """The portal URL an event's organizer shows as a QR for attendees to scan.
+
+    Served only to the event's managers, so the portal can gate the QR panel
+    on a real server-side permission check instead of hiding a UI element.
+    The URL itself is not a secret — it carries no token and is deliberately
+    fixed and shareable (see the product limitation in SIM-103) — but who
+    gets handed it is still a decision the backend makes.
+    """
+
+    url: str
+    # Echoed back so the caller can confirm which instance of a recurring
+    # series this QR points at.
+    occurrence_start: datetime | None = None
+
+
 class EventAdminNotes(BaseModel):
     """Staff-only free-text notes for an event.
 
