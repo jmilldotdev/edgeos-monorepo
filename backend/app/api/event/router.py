@@ -1169,6 +1169,7 @@ async def list_events(
     owner_id: uuid.UUID | None = None,
     start_after: datetime | None = None,
     start_before: datetime | None = None,
+    include_outside_window: bool = False,
     search: str | None = None,
     skip: PaginationSkip = 0,
     limit: PaginationLimit = 100,
@@ -1200,6 +1201,7 @@ async def list_events(
             owner_id=owner_id,
             start_after=start_after,
             start_before=start_before,
+            include_outside_window=include_outside_window,
             search=search,
         )
     else:
