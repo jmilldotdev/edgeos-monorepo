@@ -4,6 +4,7 @@ from app.api import (
     access,
     accommodation,
     admin_api_key,
+    agent,
     ai_conversation,
     ai_execution,
     api_key,
@@ -65,6 +66,7 @@ api_router.include_router(auth.router)
 api_router.include_router(tenant.router)
 api_router.include_router(trial.router)
 api_router.include_router(human.router)
+api_router.include_router(agent.router)
 api_router.include_router(api_key.router)
 api_router.include_router(admin_api_key.router)
 api_router.include_router(ai_conversation.router)

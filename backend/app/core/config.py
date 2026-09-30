@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     BACKOFFICE_URL: str = "http://localhost:5173"
+    AGENT_CONTROL_PLANE_URL: str = ""
+    AGENT_CONTROL_PLANE_API_KEY: str = ""
+    AGENT_DESKTOP_PUBLIC_ORIGIN: str = ""
+    AGENT_POPUP_ID: str = ""
+    # Stand-in Index Network key sent when creating hosted agents, until
+    # participants get their own. Hosted control planes reject creation without one.
+    AGENT_INDEX_API_KEY: str = ""
+    AGENT_EXTRACTION_BASE_URL: str = ""
+    AGENT_EXTRACTION_MODEL: str = ""
+    AGENT_EXTRACTION_API_KEY: str = ""
     ENVIRONMENT: Environment = Environment.DEV
     # Minimum level emitted by the loguru stdout sink. Set to DEBUG for verbose
     # local debugging; INFO keeps production logs to signal + request lines.

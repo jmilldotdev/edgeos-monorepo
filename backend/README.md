@@ -380,3 +380,72 @@ When running, documentation is available at:
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 - **OpenAPI JSON**: http://localhost:8000/api/v1/openapi.json
+
+## Human-owned agent setup
+
+`/api/v1/agent` reuses the portal's authenticated human bearer session; it does
+not issue a second OTP or mint a replacement human session. Ownership is derived
+from the human's database tenant and ID. The stable provisioning key remains
+`onboarding:sha256(tenant_id + ":" + human_id)` to discover existing agents.
+An existing host must also report the same verified human ID and email.
+
+Configure these **server-only** settings in the EdgeOS environment:
+
+- `AGENT_CONTROL_PLANE_URL`: HTTPS control plane, or loopback HTTP for local use.
+- `AGENT_CONTROL_PLANE_API_KEY`: fleet credential; never put it in portal settings.
+- `AGENT_DESKTOP_PUBLIC_ORIGIN`: canonical backend origin for native exchange/ACK.
+- `AGENT_POPUP_ID`: optional host event context.
+
+Apply Alembic through `b7a4c9e2f180`. Setup, consent history, and native handoffs
+are private tables without tenant-role grants. Browser queries scope both human
+and tenant; native access uses expiring one-use credential hashes.
+
+`GET /agent` returns durable draft, explicit research/training consent, revision,
+real host state, `contextPending`, `hostError`, and `telegramPairingId`.
+`PUT /agent` accepts `{revision,draft}`; `PUT /agent/consent` accepts
+`{revision,research,training,briefVersion}`. The current brief is
+`av2-consent-draft-2026-09-24`. Stale writes return 409.
+`POST /agent/provision` and `/agent/sync` accept `{revision}`. Research consent
+and a non-empty profile description are required for initial creation. Consent
+withdrawal is saved and immediately sent to the host; a host failure remains
+explicitly pending until a successful sync. Context is never silently truncated.
+Existing host context is not overwritten merely by visiting this page.
+Concurrent mutations return 409 immediately instead of waiting behind an
+in-flight host operation. Consent synchronization reconciles the host's
+authoritative state after an ambiguous response, so an already-effective
+withdrawal does not become permanently pending. Retrying failed/stalled creation
+uses the host's identity-preserving recovery operation; a stopped live local
+runtime uses its start operation.
+
+`POST /agent/reset` accepts `{revision,confirmed:true}` under the same human
+session. It clears the onboarding draft and consent acceptance, appends a
+withdrawal event, and immediately synchronizes withdrawal with the host.
+Stale revisions return 409; missing or non-boolean confirmation returns 422.
+Registration, host identity, runtime context/history, Telegram connections and
+desktop capabilities are preserved. Reset never writes the blank draft to the
+runtime. Host failure leaves consent delivery explicitly pending for sync.
+
+Pending manual requests carry approximate `ageMinutes` and nullable `expiresAt`;
+the runtime enforces the one-hour lifetime and rechecks expiry during approval.
+Telegram supports manual transient bot-token attach and explicit account
+approve/revoke under `/agent/telegram`. Approval checks the exact pending code
+and user ID again at the host. Revoke removes that account's authorization; it
+does not delete a bot. Managed-bot QR setup uses
+`/agent/telegram/onboarding/start`, `/{pairingId}`, `/{pairingId}/apply`, and
+`DELETE /{pairingId}`. Credentials remain at the host; the browser receives only
+validated Telegram links and detected owner metadata. Apply requires explicit
+confirmation of the exact detected owner. Cancelling an attempt cannot delete
+a bot already created in Telegram.
+
+`POST /agent/desktop` creates an optional `hermes://connect?v=2` OAuth handoff.
+`GET /agent/desktop` reports its durable status. Native exchange and ACK routes
+reject browser Origin headers and consume independent one-use five-minute
+credentials. Opening Desktop is not connection success; only a valid connected
+ACK with the default profile is reported connected. The host's protected OAuth
+dashboard is the only browser fallback; gateway tokens are never returned.
+
+Local Hermes provisioning needs a configured running control plane/runtime.
+Cloud provisioning additionally requires the host's external provider setup;
+this API does not synthesize an Index credential. Real Telegram bot creation,
+account approval, and native Desktop OAuth completion require the participant's
+interaction and cannot be simulated by the server.

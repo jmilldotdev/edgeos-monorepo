@@ -21,6 +21,7 @@ from app.api.accommodation.schemas import (
     AccommodationUpdate,
 )
 from app.api.ai_conversation.models import AIConversations, AIConversationUsage
+from app.api.agent.models import AgentConsentEvent, AgentDesktopAttempt, AgentSetup
 from app.api.ai_execution.models import AIExecutions
 from app.api.api_key.models import ApiKeys
 from app.api.api_key.schemas import ApiKeyCreate, ApiKeyCreated, ApiKeyPublic
@@ -221,6 +222,9 @@ __all__ = [
     "AIConversations",
     "AIConversationUsage",
     "AIExecutions",
+    "AgentSetup",
+    "AgentConsentEvent",
+    "AgentDesktopAttempt",
     # API keys
     "ApiKeys",
     "ApiKeyCreate",
