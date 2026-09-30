@@ -217,9 +217,21 @@ export default function TelegramQuickSetup({
       {state?.status === "waiting" && !expired && (
         <>
           <h3 className="text-lg font-semibold">Create your bot in Telegram</h3>
+          <p className="text-sm text-muted-foreground">
+            <span className="md:hidden">
+              Tap below to open Telegram, then tap Create. Come back here when
+              it’s done.
+            </span>
+            <span className="hidden md:inline">
+              Scan the code with your phone, or open Telegram on this computer,
+              then tap Create.
+            </span>
+          </p>
           <div className="flex flex-wrap items-center gap-5">
             {qr && (
-              <div className="rounded-xl bg-white p-3">
+              // Scanning needs a second device; on phones the link opens
+              // Telegram directly, so the code only shows on larger screens.
+              <div className="hidden rounded-xl bg-white p-3 md:block">
                 <QRCode
                   value={qr}
                   size={144}
@@ -227,15 +239,15 @@ export default function TelegramQuickSetup({
                 />
               </div>
             )}
-            <div className="space-y-3">
+            <div className="w-full space-y-3 md:w-auto">
               {link ? (
                 <a
                   href={link}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+                  className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground md:w-auto"
                 >
-                  Open Telegram setup
+                  Open Telegram
                 </a>
               ) : (
                 <p className="text-sm">
@@ -248,8 +260,12 @@ export default function TelegramQuickSetup({
                 </p>
               )}
               <p className="text-xs text-muted-foreground">
-                Keep this QR private. Expires{" "}
-                {new Date(state.expires_at).toLocaleTimeString()}.
+                Keep this link private. Expires{" "}
+                {new Date(state.expires_at).toLocaleTimeString([], {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+                .
               </p>
             </div>
           </div>
@@ -314,8 +330,14 @@ export default function TelegramQuickSetup({
             onClick={() => void act("approve")}
           >
             {busy === "approve" && spinner}
-            {busy === "approve" ? "Attaching your bot…" : "Approve & connect"}
+            {busy === "approve" ? "Connecting your bot…" : "Approve & connect"}
           </Button>
+          {busy === "approve" && (
+            <p role="status" className="text-sm text-muted-foreground">
+              Your agent restarts its Telegram connection. This can take up to a
+              couple of minutes; keep this page open.
+            </p>
+          )}
         </>
       )}
       {paused && !error && !expired && (
