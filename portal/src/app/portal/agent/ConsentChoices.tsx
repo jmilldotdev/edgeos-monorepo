@@ -24,7 +24,7 @@ const FACTS = [
   {
     term: "Changing your mind",
     detail:
-      "Change or withdraw anytime from Privacy. Your agent and your ticket are unaffected.",
+      "Change or withdraw anytime from About you. Your agent and your ticket are unaffected.",
   },
 ]
 

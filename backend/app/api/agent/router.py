@@ -21,6 +21,7 @@ from app.api.agent.schemas import (
     TelegramAction,
 )
 from app.api.agent.service import (
+    GATEWAY_RESTART_TIMEOUT,
     agent_view,
     cp,
     discover,
@@ -447,7 +448,12 @@ async def telegram_action(request: Request, human: CurrentHuman):
     tenant, _ = await owned_telegram(human)
     path = tenant_path(tenant)
     if body.action == "attach":
-        await cp(path + "/telegram", "POST", {"telegramBotToken": body.token})
+        await cp(
+            path + "/telegram",
+            "POST",
+            {"telegramBotToken": body.token},
+            timeout=GATEWAY_RESTART_TIMEOUT,
+        )
     elif body.action == "approve":
         pending = await pending_for(path)
         if not any(
@@ -461,7 +467,13 @@ async def telegram_action(request: Request, human: CurrentHuman):
             path + "/pairings/approve",
             "POST",
             {"code": body.code, "telegramUserId": body.userId},
+            timeout=GATEWAY_RESTART_TIMEOUT,
         )
     else:
-        await cp(path + "/pairings/revoke", "POST", {"telegramUserId": body.userId})
+        await cp(
+            path + "/pairings/revoke",
+            "POST",
+            {"telegramUserId": body.userId},
+            timeout=GATEWAY_RESTART_TIMEOUT,
+        )
     return {"accepted": True}

@@ -6,7 +6,7 @@ from pydantic import Field
 
 from app.api.agent.router import owned_telegram, router, setup
 from app.api.agent.schemas import Confirmation
-from app.api.agent.service import cp, tenant_path
+from app.api.agent.service import GATEWAY_RESTART_TIMEOUT, cp, tenant_path
 from app.core.dependencies.users import CurrentHuman, SessionDep
 
 
@@ -125,7 +125,12 @@ async def apply_telegram_onboarding(
             409,
             "The detected Telegram owner changed. Refresh and confirm the exact account again.",
         )
-    data = await cp(path + "/apply", "POST", {"allowed_user_ids": [body.owner_user_id]})
+    data = await cp(
+        path + "/apply",
+        "POST",
+        {"allowed_user_ids": [body.owner_user_id]},
+        timeout=GATEWAY_RESTART_TIMEOUT,
+    )
     if (
         data.get("ok") is not True
         or str(data.get("telegramUserId")) != body.owner_user_id

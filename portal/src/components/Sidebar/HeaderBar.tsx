@@ -132,7 +132,6 @@ function useHideOnScroll(enabled: boolean) {
 const AGENT_CRUMBS: Record<string, string> = {
   context: "about",
   connections: "connections",
-  privacy: "privacy",
 }
 
 const HeaderBar = () => {

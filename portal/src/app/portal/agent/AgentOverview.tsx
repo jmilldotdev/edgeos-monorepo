@@ -158,7 +158,7 @@ export default function AgentOverview({ state }: { state: AgentState }) {
                 ? `Research on · Training ${state.consent.training ? "on" : "off"}`
                 : "Research withdrawn"
             }
-            href="/portal/agent/privacy"
+            href="/portal/agent/context#privacy"
             cta="Manage"
           />
           <Tile

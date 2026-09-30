@@ -36,14 +36,22 @@ def ownership_key(human) -> str:
     return "onboarding:" + hashlib.sha256(identity.encode()).hexdigest()
 
 
-async def cp(path: str, method: str = "GET", body: dict | None = None):
+# Hosted Telegram changes rewrite the sandbox env and restart the gateway: the
+# control plane bounds that at about 90s (30s env write, up to ~16s gateway
+# reap, 30s start), well past the default budget.
+GATEWAY_RESTART_TIMEOUT = 150
+
+
+async def cp(
+    path: str, method: str = "GET", body: dict | None = None, timeout: float = 25
+):
     base = safe_url(settings.AGENT_CONTROL_PLANE_URL)
     if not base or not settings.AGENT_CONTROL_PLANE_API_KEY:
         raise HTTPException(
             503, "Agent hosting is not configured. Your progress is saved."
         )
     try:
-        async with httpx.AsyncClient(timeout=25, follow_redirects=False) as client:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
             result = await client.request(
                 method,
                 base + path,
