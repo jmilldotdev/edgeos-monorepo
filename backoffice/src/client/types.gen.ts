@@ -3433,6 +3433,23 @@ export type HumanPortalPublic = {
 export type HumanProfileStats = {
     popups: Array<HumanProfileStatsPopup>;
     total_days: number;
+    events_attended?: number;
+    events_hosted?: number;
+    hosted_attendees_count?: number;
+    top_event_theme?: (string | null);
+    most_shared_attendees?: Array<HumanProfileStatsPerson>;
+    most_active_attendees_of_hosted_events?: Array<HumanProfileStatsPerson>;
+};
+
+/**
+ * A human ranked in an event attendance profile statistic.
+ */
+export type HumanProfileStatsPerson = {
+    human_id: string;
+    name: string;
+    picture_url?: (string | null);
+    event_count: number;
+    shared_events?: Array<HumanProfileStatsSharedEvent>;
 };
 
 /**
@@ -3446,6 +3463,16 @@ export type HumanProfileStatsPopup = {
     location?: (string | null);
     image_url?: (string | null);
     total_days: number;
+};
+
+/**
+ * An event instance shared with another human.
+ */
+export type HumanProfileStatsSharedEvent = {
+    event_id: string;
+    title: string;
+    start_time: string;
+    timezone: string;
 };
 
 /**
@@ -7836,6 +7863,7 @@ export type EventsPublicCalendarIcsResponse = (string);
 export type EventsListEventsData = {
     eventStatus?: (EventStatus | null);
     excludeStatuses?: (Array<EventStatus> | null);
+    includeOutsideWindow?: boolean;
     kind?: (string | null);
     /**
      * Maximum number of items to return

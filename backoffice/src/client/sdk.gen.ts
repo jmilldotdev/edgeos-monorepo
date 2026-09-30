@@ -4973,6 +4973,7 @@ export class EventsService {
      * @param data.ownerId
      * @param data.startAfter
      * @param data.startBefore
+     * @param data.includeOutsideWindow
      * @param data.search
      * @param data.skip Number of items to skip
      * @param data.limit Maximum number of items to return
@@ -4999,6 +5000,7 @@ export class EventsService {
                 owner_id: data.ownerId,
                 start_after: data.startAfter,
                 start_before: data.startBefore,
+                include_outside_window: data.includeOutsideWindow,
                 search: data.search,
                 skip: data.skip,
                 limit: data.limit

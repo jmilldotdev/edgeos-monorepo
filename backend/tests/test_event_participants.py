@@ -66,12 +66,14 @@ def _make_event(
     status: EventStatus = EventStatus.PUBLISHED,
     max_participant: int | None = None,
     start_offset_days: int = 7,
+    host_id: uuid.UUID | None = None,
 ) -> Events:
     start = datetime.now(UTC) + timedelta(days=start_offset_days)
     event = Events(
         tenant_id=tenant.id,
         popup_id=popup.id,
         owner_id=uuid.uuid4(),
+        host_id=host_id,
         title="Participant State Machine Test",
         start_time=start,
         end_time=start + timedelta(hours=1),
@@ -247,6 +249,50 @@ class TestPortalAttendeeCount:
         assert str(visible.id) in profile_ids
         assert len(results) == 1
 
+    def test_event_host_is_not_counted_or_listed_as_participant(
+        self,
+        client: TestClient,
+        db: Session,
+        tenant_a: Tenants,
+    ) -> None:
+        popup = _make_popup(db, tenant_a)
+        host = _make_human(db, tenant_a)
+        attendee = _make_human(db, tenant_a)
+        event = _make_event(db, tenant_a, popup, host_id=host.id)
+        db.add_all(
+            [
+                EventParticipants(
+                    tenant_id=tenant_a.id,
+                    event_id=event.id,
+                    profile_id=host.id,
+                    status=ParticipantStatus.CHECKED_IN,
+                ),
+                EventParticipants(
+                    tenant_id=tenant_a.id,
+                    event_id=event.id,
+                    profile_id=attendee.id,
+                    status=ParticipantStatus.REGISTERED,
+                ),
+            ]
+        )
+        db.commit()
+
+        detail = client.get(
+            f"/api/v1/events/portal/events/{event.id}",
+            headers=_human_headers(host),
+        )
+        assert detail.status_code == 200, detail.text
+        assert detail.json()["attendee_count"] == 1
+
+        listing = client.get(
+            f"/api/v1/event-participants/portal/participants?event_id={event.id}",
+            headers=_human_headers(host),
+        )
+        assert listing.status_code == 200, listing.text
+        assert [row["profile_id"] for row in listing.json()["results"]] == [
+            str(attendee.id)
+        ]
+
 
 # ---------------------------------------------------------------------------
 # Portal: copy attendee emails (managers only)
@@ -393,6 +439,25 @@ class TestPortalRegister:
         assert kwargs["method"] == "REQUEST"
         assert kwargs["email"] == human.email
         assert kwargs["human_id"] == human.id
+
+    def test_event_host_cannot_register_as_a_participant(
+        self,
+        client: TestClient,
+        db: Session,
+        tenant_a: Tenants,
+    ) -> None:
+        popup = _make_popup(db, tenant_a)
+        host = _make_human(db, tenant_a)
+        event = _make_event(db, tenant_a, popup, host_id=host.id)
+
+        response = client.post(
+            f"/api/v1/event-participants/portal/register/{event.id}",
+            headers=_human_headers(host),
+        )
+
+        assert response.status_code == 409, response.text
+        assert "host" in response.json()["detail"].lower()
+        assert _fetch_participant(db, event.id, host.id) is None
 
     def test_register_on_draft_event_rejected(
         self,
@@ -739,6 +804,42 @@ class TestPortalCancelRegistration:
         # self-service. This is what routes to the "registration cancelled"
         # email instead of the organiser "event cancelled" notice.
         assert itip_mock.await_args.kwargs["is_self_rsvp"] is True
+
+    def test_checked_in_rsvp_cannot_be_cancelled(
+        self,
+        client: TestClient,
+        db: Session,
+        tenant_a: Tenants,
+    ) -> None:
+        popup = _make_popup(db, tenant_a)
+        event = _make_event(db, tenant_a, popup, start_offset_days=0)
+        human = _make_human(db, tenant_a)
+        _give_ticket(db, tenant_a, popup, human)
+
+        with patch(_ITIP_TARGET, new=AsyncMock(return_value=None)) as itip_mock:
+            registered = client.post(
+                f"/api/v1/event-participants/portal/register/{event.id}",
+                headers=_human_headers(human),
+            )
+            assert registered.status_code == 200, registered.text
+
+            checked_in = client.post(
+                f"/api/v1/event-participants/portal/check-in/{event.id}",
+                headers=_human_headers(human),
+            )
+            assert checked_in.status_code == 200, checked_in.text
+
+            response = client.post(
+                f"/api/v1/event-participants/portal/cancel-registration/{event.id}",
+                headers=_human_headers(human),
+            )
+
+        assert response.status_code == 409, response.text
+        db.expire_all()
+        row = _fetch_participant(db, event.id, human.id)
+        assert row is not None
+        assert row.status == ParticipantStatus.CHECKED_IN
+        assert itip_mock.await_count == 1
 
     def test_cancel_routes_to_rsvp_cancelled_not_event_cancelled(
         self,
