@@ -45,7 +45,7 @@ const HumanForm = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const profileFieldLabel = (field: "gender" | "age" | "residence") =>
-    field === "gender" ? t("form.gender") : t(`application.fields.${field}`)
+    field === "gender" ? t("form.gender") : t(`profile.${field}`)
 
   // LEGACY: linked_emails removed from API – review for deletion
   const filteredLinkedEmails: string[] = []

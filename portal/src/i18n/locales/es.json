@@ -742,6 +742,8 @@
     "header_subtitle": "Administrá tu experiencia e historial en {{tenant}}",
     "invoices": "Facturas",
     "edit_profile": "Editar perfil",
+    "age": "Edad",
+    "residence": "Lugar de residencia",
     "hide_linked_emails": "Ocultar emails vinculados",
     "linked_email_one": "{{count}} email vinculado",
     "linked_email_other": "{{count}} emails vinculados",
