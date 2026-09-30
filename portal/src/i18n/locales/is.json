@@ -616,6 +616,8 @@
     "header_subtitle": "Hafðu umsjón með upplifun þinni og sögu hjá {{tenant}}",
     "invoices": "Reikningar",
     "edit_profile": "Breyta prófíl",
+    "age": "Aldur",
+    "residence": "Búseta",
     "hide_linked_emails": "Fela tengd netföng",
     "linked_email_one": "{{count}} tengt netfang",
     "linked_email_other": "{{count}} tengd netföng",

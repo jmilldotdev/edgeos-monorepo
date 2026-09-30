@@ -625,6 +625,8 @@
     "header_subtitle": "管理您在 {{tenant}} 的体验和历史",
     "invoices": "发票",
     "edit_profile": "编辑资料",
+    "age": "年龄",
+    "residence": "居住地",
     "hide_linked_emails": "隐藏关联邮箱",
     "linked_email_one": "{{count}} 个关联邮箱",
     "linked_email_other": "{{count}} 个关联邮箱",
