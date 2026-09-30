@@ -15962,12 +15962,92 @@ export const HumanProfileStatsSchema = {
         total_days: {
             type: 'integer',
             title: 'Total Days'
+        },
+        events_attended: {
+            type: 'integer',
+            title: 'Events Attended',
+            default: 0
+        },
+        events_hosted: {
+            type: 'integer',
+            title: 'Events Hosted',
+            default: 0
+        },
+        hosted_attendees_count: {
+            type: 'integer',
+            title: 'Hosted Attendees Count',
+            default: 0
+        },
+        top_event_theme: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Top Event Theme'
+        },
+        most_shared_attendees: {
+            items: {
+                '$ref': '#/components/schemas/HumanProfileStatsPerson'
+            },
+            type: 'array',
+            title: 'Most Shared Attendees'
+        },
+        most_active_attendees_of_hosted_events: {
+            items: {
+                '$ref': '#/components/schemas/HumanProfileStatsPerson'
+            },
+            type: 'array',
+            title: 'Most Active Attendees Of Hosted Events'
         }
     },
     type: 'object',
     required: ['popups', 'total_days'],
     title: 'HumanProfileStats',
     description: "Aggregate stats for the current human's profile page."
+} as const;
+
+export const HumanProfileStatsPersonSchema = {
+    properties: {
+        human_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Human Id'
+        },
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        picture_url: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Picture Url'
+        },
+        event_count: {
+            type: 'integer',
+            title: 'Event Count'
+        },
+        shared_events: {
+            items: {
+                '$ref': '#/components/schemas/HumanProfileStatsSharedEvent'
+            },
+            type: 'array',
+            title: 'Shared Events'
+        }
+    },
+    type: 'object',
+    required: ['human_id', 'name', 'event_count'],
+    title: 'HumanProfileStatsPerson',
+    description: 'A human ranked in an event attendance profile statistic.'
 } as const;
 
 export const HumanProfileStatsPopupSchema = {
@@ -16036,6 +16116,33 @@ export const HumanProfileStatsPopupSchema = {
     required: ['popup_id', 'popup_name', 'total_days'],
     title: 'HumanProfileStatsPopup',
     description: "Single popup entry in a human's profile stats."
+} as const;
+
+export const HumanProfileStatsSharedEventSchema = {
+    properties: {
+        event_id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Event Id'
+        },
+        title: {
+            type: 'string',
+            title: 'Title'
+        },
+        start_time: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Start Time'
+        },
+        timezone: {
+            type: 'string',
+            title: 'Timezone'
+        }
+    },
+    type: 'object',
+    required: ['event_id', 'title', 'start_time', 'timezone'],
+    title: 'HumanProfileStatsSharedEvent',
+    description: 'An event instance shared with another human.'
 } as const;
 
 export const HumanProfileUpdateSchema = {

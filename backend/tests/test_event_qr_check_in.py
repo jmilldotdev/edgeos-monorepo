@@ -225,6 +225,19 @@ def _register(client: TestClient, human: Humans, event: Events, **body):
 
 
 class TestCheckInStateMachine:
+    def test_event_host_cannot_check_in_as_a_participant(
+        self, client: TestClient, db: Session, tenant_a: Tenants
+    ) -> None:
+        popup = _make_popup(db, tenant_a)
+        host = _make_human(db, tenant_a)
+        event = _make_event(db, tenant_a, popup, host_id=host.id)
+
+        response = _check_in(client, host, event)
+
+        assert response.status_code == 409, response.text
+        assert _code(response) == "event_host_cannot_attend"
+        assert _rows(db, event.id, host.id) == []
+
     def test_creates_participation_without_prior_rsvp(
         self, client: TestClient, db: Session, tenant_a: Tenants
     ) -> None:
@@ -442,13 +455,13 @@ class TestCheckInEligibility:
         assert resp.status_code == 403, resp.text
         assert _code(resp) == "ticket_required"
 
-    def test_manager_with_ticket_checks_in_without_rsvp(
+    def test_owner_with_ticket_checks_in_without_rsvp(
         self, client: TestClient, db: Session, tenant_a: Tenants
     ) -> None:
         popup = _make_popup(db, tenant_a)
         human = _make_human(db, tenant_a)
         _give_ticket(db, tenant_a, popup, human)
-        event = _make_event(db, tenant_a, popup, host_id=human.id)
+        event = _make_event(db, tenant_a, popup, owner_id=human.id)
 
         resp = _check_in(client, human, event)
 

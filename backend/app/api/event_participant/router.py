@@ -139,6 +139,11 @@ async def admin_add_participant(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
+    if participant_in.profile_id == event.host_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The event host cannot be added as a participant",
+        )
 
     existing = crud.event_participants_crud.get_by_event_and_profile(
         db, participant_in.event_id, participant_in.profile_id
@@ -298,6 +303,7 @@ async def list_portal_participants(
         limit=limit,
         occurrence_start=occurrence_start,
         scope_to_occurrence=occurrence_start is not None,
+        exclude_profile_id=event.host_id,
     )
 
     # Privacy: drop participants who hid their name (info_not_shared) on their
@@ -360,7 +366,11 @@ async def list_portal_attendee_emails(
         occurrence_start=occurrence_start,
         scope_to_occurrence=occurrence_start is not None,
     )
-    active = [p for p in participants if p.status != ParticipantStatus.CANCELLED]
+    active = [
+        p
+        for p in participants
+        if p.status != ParticipantStatus.CANCELLED and p.profile_id != event.host_id
+    ]
     if not active:
         return AttendeeEmailsResponse(emails=[], count=0)
 
@@ -411,6 +421,11 @@ async def register_for_event(
     if event.status != EventStatus.PUBLISHED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Event is not published"
+        )
+    if event.host_id == current_human.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The event host cannot RSVP as a participant",
         )
 
     access = crud.event_participants_crud.eligibility_by_human(
@@ -570,6 +585,11 @@ async def cancel_registration(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="No active registration found"
         )
+    if existing.status == ParticipantStatus.CHECKED_IN:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An RSVP cannot be cancelled after check-in",
+        )
 
     existing.status = ParticipantStatus.CANCELLED
     db.add(existing)
@@ -637,6 +657,12 @@ async def check_in(
             status.HTTP_400_BAD_REQUEST,
             "event_not_published",
             "This event is not published.",
+        )
+    if event.host_id == current_human.id:
+        raise reject(
+            status.HTTP_409_CONFLICT,
+            "event_host_cannot_attend",
+            "Event hosts cannot check in as participants.",
         )
 
     # 404s for a private event the caller was never invited to, so the QR
