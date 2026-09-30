@@ -86,6 +86,8 @@ vi.mock("@/hooks/useResources", () => ({
   }),
 }))
 
+vi.mock("@/hooks/useAgentResources", () => ({ default: () => [] }))
+
 let isMobile = true
 
 vi.mock("@/hooks/useIsMobile", () => ({

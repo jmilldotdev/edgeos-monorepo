@@ -57,8 +57,6 @@
     "buy_tickets": "Kaupa miða"
   },
   "portal": {
-    "no_active_popups": "Engir virkir viðburðir",
-    "no_active_popups_description": "Engir virkir viðburðir eru í boði núna. Vinsamlegast athugaðu aftur síðar.",
     "no_profile": "Engar prófílupplýsingar í boði.",
     "no_profile_contact": "Vinsamlegast hafðu samband við þjónustudeild ef þú telur þetta vera villu.",
     "direct_sales_title": "Kaupmöguleikar",
@@ -631,6 +629,20 @@
     "no_past_events": "Engir fyrri viðburðir fundust",
     "days_attended": "{{count}} dagar mættir"
   },
+  "dashboard": {
+    "morning": "Góðan daginn",
+    "afternoon": "Góðan dag",
+    "evening": "Gott kvöld",
+    "loading": "Hleður",
+    "today_title": "Viðburðirnir þínir í dag",
+    "today_empty": "Ekkert á dagskránni hjá þér í dag.",
+    "browse_events": "Skoða viðburði",
+    "agent_title": "Settu upp umboðsmanninn þinn",
+    "agent_continue_title": "Kláraðu uppsetningu umboðsmannsins",
+    "agent_body": "Hann finnur fólkið þitt, sér um kynningar og spyr áður en hann gerir eitthvað. Um tíu mínútur.",
+    "agent_cta": "Byrja",
+    "agent_continue": "Halda áfram"
+  },
   "sidebar": {
     "your_participation": "Þátttaka þín",
     "event": "Viðburður",
@@ -646,6 +658,15 @@
     "commerce": "Verslun",
     "checkouts": "Kaup",
     "community": "Samfélag",
+    "agents": "Umboðsmenn",
+    "dashboard": "Yfirlit",
+    "agent_setup": "Settu upp umboðsmanninn þinn",
+    "agent_new": "Nýtt",
+    "agent_in_progress": "Halda áfram",
+    "agent_overview": "Yfirlit",
+    "agent_about": "Um þig",
+    "agent_connections": "Tengingar",
+    "agent_privacy": "Persónuvernd",
     "tickets": "Miðar",
     "orders": "Greiðslur",
     "shop": "Verslun",

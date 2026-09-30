@@ -3,11 +3,13 @@ import type { ComponentType, SVGProps } from "react"
 
 type ResourceStatus = "soon" | "active" | "inactive" | "disabled" | "hidden"
 export type ResourceGroup =
+  | "home"
   | "general"
   | "participation"
   | "commerce"
   | "checkouts"
   | "community"
+  | "agents"
 
 export interface Resource {
   name: string

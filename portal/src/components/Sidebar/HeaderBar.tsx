@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { Fragment, useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher"
 import { MobilePopupSwitcher } from "@/components/MobilePopupSwitcher"
 import { useIsMobile } from "@/hooks/useIsMobile"
@@ -11,6 +12,7 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
+  BreadcrumbPage,
   BreadcrumbSeparator,
 } from "../ui/breadcrumb"
 import BreadcrumbSegment from "./BreadcrumbSegment"
@@ -127,7 +129,14 @@ function useHideOnScroll(enabled: boolean) {
   return hidden
 }
 
+const AGENT_CRUMBS: Record<string, string> = {
+  context: "about",
+  connections: "connections",
+  privacy: "privacy",
+}
+
 const HeaderBar = () => {
+  const { t } = useTranslation()
   const { getCity } = useCityProvider()
   const pathname = usePathname()
   const city = getCity()
@@ -139,6 +148,23 @@ const HeaderBar = () => {
     router.push(`/portal/${city?.slug}`)
   }
 
+  // Popup-independent pages get their own trail instead of the city's.
+  const agentPage = pathname.match(/^\/portal\/agent(?:\/([a-z]+))?$/)
+  const agentChild = agentPage?.[1]
+  const globalCrumbs: { label: string; href?: string }[] | null =
+    pathname === "/portal"
+      ? [{ label: t("sidebar.dashboard") }]
+      : agentPage
+        ? [
+            {
+              label: t("sidebar.agents"),
+              href: agentChild ? "/portal/agent" : undefined,
+            },
+            ...(agentChild
+              ? [{ label: t(`sidebar.agent_${AGENT_CRUMBS[agentChild]}`) }]
+              : []),
+          ]
+        : null
   const pathSegments = pathname.split("/").filter(Boolean).slice(2)
   const fallbackSegments =
     city?.takes_applications === false ? ["checkout"] : ["application"]
@@ -165,35 +191,57 @@ const HeaderBar = () => {
       <SidebarTrigger />
       <Breadcrumb>
         <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <button type="button" onClick={handleClickCity}>
-                {city?.name}
-              </button>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          {pathsToDisplay.map((path, idx) => {
-            const isCurrent = idx === pathsToDisplay.length - 1
-            const href =
-              base != null && path !== "shop"
-                ? `${base}/${pathsToDisplay.slice(0, idx + 1).join("/")}`
-                : undefined
-            return (
-              <Fragment key={path}>
-                <BreadcrumbSeparator>
-                  <ChevronRight className="h-4 w-4" />
-                </BreadcrumbSeparator>
-                <BreadcrumbSegment
-                  path={path}
-                  href={href}
-                  isCurrent={isCurrent}
-                  isLoading={isLoading}
-                  nameMapping={nameMapping}
-                />
+          {globalCrumbs ? (
+            globalCrumbs.map((crumb, idx) => (
+              <Fragment key={crumb.label}>
+                {idx > 0 && (
+                  <BreadcrumbSeparator>
+                    <ChevronRight className="h-4 w-4" />
+                  </BreadcrumbSeparator>
+                )}
+                <BreadcrumbItem>
+                  {crumb.href ? (
+                    <BreadcrumbLink href={crumb.href}>
+                      {crumb.label}
+                    </BreadcrumbLink>
+                  ) : (
+                    <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                  )}
+                </BreadcrumbItem>
               </Fragment>
-            )
-          })}
+            ))
+          ) : (
+            <>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <button type="button" onClick={handleClickCity}>
+                    {city?.name}
+                  </button>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              {pathsToDisplay.map((path, idx) => {
+                const isCurrent = idx === pathsToDisplay.length - 1
+                const href =
+                  base != null && path !== "shop"
+                    ? `${base}/${pathsToDisplay.slice(0, idx + 1).join("/")}`
+                    : undefined
+                return (
+                  <Fragment key={path}>
+                    <BreadcrumbSeparator>
+                      <ChevronRight className="h-4 w-4" />
+                    </BreadcrumbSeparator>
+                    <BreadcrumbSegment
+                      path={path}
+                      href={href}
+                      isCurrent={isCurrent}
+                      isLoading={isLoading}
+                      nameMapping={nameMapping}
+                    />
+                  </Fragment>
+                )
+              })}
+            </>
+          )}
         </BreadcrumbList>
       </Breadcrumb>
       <div className="ml-auto flex items-center gap-2">

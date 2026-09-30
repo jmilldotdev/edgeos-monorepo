@@ -71,8 +71,6 @@
     "buy_tickets": "Comprar tickets"
   },
   "portal": {
-    "no_active_popups": "Sin eventos activos",
-    "no_active_popups_description": "No hay eventos activos disponibles en este momento. Por favor, vuelve más tarde.",
     "no_profile": "No hay datos de perfil disponibles.",
     "no_profile_contact": "Por favor, contacta a soporte si crees que esto es un error.",
     "direct_sales_title": "Opciones de compra",
@@ -759,6 +757,20 @@
     "no_past_events": "No se encontraron eventos pasados",
     "days_attended": "{{count}} días asistidos"
   },
+  "dashboard": {
+    "morning": "Buenos días",
+    "afternoon": "Buenas tardes",
+    "evening": "Buenas noches",
+    "loading": "Cargando",
+    "today_title": "Tus eventos de hoy",
+    "today_empty": "No tienes nada en el calendario hoy.",
+    "browse_events": "Ver eventos",
+    "agent_title": "Configura tu agente personal",
+    "agent_continue_title": "Termina de configurar tu agente",
+    "agent_body": "Encuentra a tu gente, gestiona presentaciones y te pregunta antes de actuar. Unos diez minutos.",
+    "agent_cta": "Empezar",
+    "agent_continue": "Continuar"
+  },
   "sidebar": {
     "your_participation": "Tu Participación",
     "event": "Evento",
@@ -774,6 +786,15 @@
     "commerce": "Comercio",
     "checkouts": "Compras",
     "community": "Comunidad",
+    "agents": "Agentes",
+    "dashboard": "Inicio",
+    "agent_setup": "Configura tu agente",
+    "agent_new": "Nuevo",
+    "agent_in_progress": "Continuar",
+    "agent_overview": "Resumen",
+    "agent_about": "Sobre ti",
+    "agent_connections": "Conexiones",
+    "agent_privacy": "Privacidad",
     "tickets": "Entradas",
     "orders": "Pagos",
     "shop": "Tienda",

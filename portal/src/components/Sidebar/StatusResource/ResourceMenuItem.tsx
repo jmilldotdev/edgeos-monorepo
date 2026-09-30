@@ -2,7 +2,7 @@ import { Lock } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 import type { Resource } from "@/types/resources"
-import { SidebarMenuButton } from "../SidebarComponents"
+import { SidebarMenuButton, useSidebar } from "../SidebarComponents"
 
 interface ResourceMenuItemProps {
   resource: Resource
@@ -22,11 +22,13 @@ const ResourceMenuItem = ({
   isActive = false,
 }: ResourceMenuItemProps) => {
   const { t } = useTranslation()
+  const { setOpenMobile } = useSidebar()
   const { status } = resource
 
   const handleClick = () => {
-    if (status === "active" && resource.path && !isActive) {
-      onNavigate(resource.path)
+    if (status === "active" && resource.path) {
+      setOpenMobile(false)
+      if (!isActive) onNavigate(resource.path)
     }
   }
 

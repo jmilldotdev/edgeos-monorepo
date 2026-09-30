@@ -1,10 +1,11 @@
 import { usePathname, useRouter } from "next/navigation"
 import { useCallback } from "react"
 import { useTranslation } from "react-i18next"
+import useAgentResources from "@/hooks/useAgentResources"
 import useResources from "@/hooks/useResources"
 import { trackPortalTelemetry } from "@/lib/portal-telemetry"
+import { cn } from "@/lib/utils"
 import type { Resource, ResourceGroup } from "@/types/resources"
-import { Separator } from "../ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
 import GroupsResources from "./Groups/GroupsResources"
 import {
@@ -27,7 +28,13 @@ const statusColor = (status: string) => {
   return "bg-gray-100 text-gray-800"
 }
 
-const resourceGroups: ResourceGroup[] = ["commerce", "checkouts", "community"]
+const resourceGroups: ResourceGroup[] = [
+  "home",
+  "commerce",
+  "checkouts",
+  "community",
+  "agents",
+]
 
 const ResourceItem: React.FC<{
   resource: Resource
@@ -79,7 +86,8 @@ const ResourceItem: React.FC<{
 
 const ResourcesMenu = () => {
   const { t } = useTranslation()
-  const { resources, doorName } = useResources()
+  const { resources: popupResources, doorName } = useResources()
+  const resources = [...useAgentResources(), ...popupResources]
   const router = useRouter()
   const pathname = usePathname()
 
@@ -110,7 +118,10 @@ const ResourcesMenu = () => {
               <SidebarGroupLabel asChild>
                 <h2
                   id={groupLabelId}
-                  className="px-2 text-[11px] font-semibold tracking-[0.08em] text-sidebar-foreground/60 uppercase"
+                  className={cn(
+                    "px-2 text-[11px] font-semibold tracking-[0.08em] text-sidebar-foreground/60 uppercase",
+                    group === "home" && "sr-only",
+                  )}
                 >
                   {group === "general" && doorName
                     ? doorName
@@ -128,10 +139,7 @@ const ResourcesMenu = () => {
                     />
                   ))}
                   {group === "community" && (
-                    <>
-                      <Separator className="my-4" />
-                      <GroupsResources onNavigate={handleNavigate} />
-                    </>
+                    <GroupsResources onNavigate={handleNavigate} />
                   )}
                 </SidebarMenu>
               </SidebarGroupContent>
