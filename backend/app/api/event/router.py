@@ -23,6 +23,7 @@ from app.api.event.schemas import (
     AttendanceMode,
     DayEventCount,
     EventAdminNotes,
+    EventAdminUpdate,
     EventAttendanceModeUpdate,
     EventAvailabilityCheck,
     EventAvailabilityResult,
@@ -1588,7 +1589,7 @@ async def create_event(
 @router.patch("/{event_id}", response_model=EventPublic)
 async def update_event(
     event_id: uuid.UUID,
-    event_in: EventUpdate,
+    event_in: EventAdminUpdate,
     db: AdminOrApiKeySession_EventsWrite,
     current_user: AdminOrApiKey_EventsWrite,
 ) -> EventPublic:
@@ -1610,19 +1611,32 @@ async def update_event(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="end_time must not be before start_time",
         )
+    recurrence_touched = "recurrence" in event_in.model_fields_set
+    new_rrule = event.rrule
+    new_exdates = list(event.recurrence_exdates or [])
+    if recurrence_touched:
+        if event.recurrence_master_id is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot set a recurrence rule on a detached occurrence",
+            )
+        new_rrule = format_rrule(event_in.recurrence) if event_in.recurrence else None
+        if new_rrule != event.rrule:
+            new_exdates = []
+
     timing_or_venue_changed = (
         event_in.venue_id is not None
         or event_in.start_time is not None
         or event_in.end_time is not None
     )
-    if new_venue_id is not None and timing_or_venue_changed:
+    if new_venue_id is not None and (timing_or_venue_changed or recurrence_touched):
         _check_recurrence_conflicts(
             db,
             venue_id=new_venue_id,
             start_time=new_start,
             end_time=new_end,
-            rrule_str=event.rrule,
-            exdates=list(event.recurrence_exdates or []),
+            rrule_str=new_rrule,
+            exdates=new_exdates,
             exclude_event_id=event.id,
             timezone=event_in.timezone or event.timezone,
             allow_unbookable=True,
@@ -1632,7 +1646,7 @@ async def update_event(
     # switching to a custom location clears the prior venue. Rebuild via the
     # dump dict so the cleared fields are tracked as set (CRUD.update relies
     # on ``exclude_unset=True``).
-    patch_dict = event_in.model_dump(exclude_unset=True)
+    patch_dict = event_in.model_dump(exclude_unset=True, exclude={"recurrence"})
     if patch_dict.get("venue_id") is not None:
         patch_dict["custom_location_name"] = None
         patch_dict["custom_location_url"] = None
@@ -1667,12 +1681,26 @@ async def update_event(
         "rrule": event.rrule,
         "recurrence_exdates": event.recurrence_exdates,
     }
+    # All validation has succeeded. Persist recurrence in the same commit as
+    # the other fields, after capturing the old calendar/audit state.
+    if recurrence_touched:
+        event.rrule = new_rrule
+        event.recurrence_exdates = new_exdates
     updated = crud.events_crud.update(db, event, event_in)
 
     if _event_calendar_fields_changed(before, updated):
         await _bump_and_dispatch_itip_update(db, updated, before=before)
 
     audit_after = build_event_snapshot(db, updated)
+    if recurrence_touched:
+        # Recurrence is not part of EventUpdate's generic audit snapshot.
+        audit_before.update(
+            rrule=before["rrule"], recurrence_exdates=before["recurrence_exdates"]
+        )
+        audit_after.update(
+            rrule=updated.rrule,
+            recurrence_exdates=list(updated.recurrence_exdates or []),
+        )
     record_event_audit(
         db,
         event=updated,

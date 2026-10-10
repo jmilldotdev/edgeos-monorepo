@@ -2830,6 +2830,38 @@ export type EventAdminNotes = {
     notes?: (string | null);
 };
 
+/**
+ * Backoffice update: save schedule and recurrence atomically.
+ *
+ * Omit ``recurrence`` to preserve the stored rule and EXDATEs. Explicit
+ * ``null`` makes the series a one-off; a rule sets/replaces the RRULE.
+ */
+export type EventAdminUpdate = {
+    title?: (string | null);
+    content?: (string | null);
+    start_time?: (string | null);
+    end_time?: (string | null);
+    timezone?: (string | null);
+    cover_url?: (string | null);
+    meeting_url?: (string | null);
+    max_participant?: (number | null);
+    tags?: (Array<(string)> | null);
+    venue_id?: (string | null);
+    custom_location_name?: (string | null);
+    custom_location_url?: (string | null);
+    track_id?: (string | null);
+    visibility?: (EventVisibility | null);
+    require_approval?: (boolean | null);
+    kind?: (string | null);
+    host_display_name?: (string | null);
+    host_id?: (string | null);
+    collaborator_ids?: (Array<(string)> | null);
+    status?: (EventStatus | null);
+    highlighted?: (boolean | null);
+    group_id?: (string | null);
+    recurrence?: (RecurrenceRule | null);
+};
+
 export type EventApprovalPayload = {
     reason?: (string | null);
 };
@@ -9175,7 +9207,7 @@ export type EventsGetEventResponse = (EventPublic);
 
 export type EventsUpdateEventData = {
     eventId: string;
-    requestBody: EventUpdate;
+    requestBody: EventAdminUpdate;
     xTenantId?: (string | null);
 };
 
