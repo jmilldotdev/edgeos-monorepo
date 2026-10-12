@@ -102,7 +102,6 @@
     "definitive_total": "Total"
   },
   "orders": {
-    "show_unit_qr": "View QR",
     "show_unit_qr_label": "View QR for {{product}}, unit {{number}}",
     "unit_qr_title": "{{product}} · QR {{number}}",
     "unit_qr_description": "Show this QR to the operator for this item.",

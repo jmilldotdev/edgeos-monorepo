@@ -14,7 +14,11 @@ const payment = (
   ...overrides,
 })
 
-const shirtOrigin = { category: "merch", salesFlowId: "direct-flow" }
+const shirtOrigin = {
+  category: "merch",
+  salesFlowId: "direct-flow",
+  scannableUnits: [],
+}
 
 const product = (
   productId: string,
@@ -170,6 +174,43 @@ describe("projectOtherPurchasedProducts", () => {
 
     expect(result).toEqual([
       { id: "shirt", name: "Event shirt", quantity: 1, ...shirtOrigin },
+    ])
+  })
+
+  it("lists active scannable units with a code, across payments", () => {
+    const shirt = (id: string, overrides = {}) => ({
+      id,
+      check_in_code: `code-${id}`,
+      active: true,
+      requires_check_in: true,
+      ...overrides,
+    })
+    const result = projectOtherPurchasedProducts(
+      [
+        payment({
+          id: "payment-1",
+          products_snapshot: [
+            product("shirt", [
+              shirt("a"),
+              shirt("revoked", { active: false }),
+              shirt("not-scannable", { requires_check_in: false }),
+              shirt("no-code", { check_in_code: "" }),
+            ]),
+          ],
+        }),
+        payment({
+          id: "payment-2",
+          products_snapshot: [product("shirt", [shirt("b")])],
+        }),
+      ],
+      new Set(),
+      [],
+    )
+
+    expect(result).toHaveLength(1)
+    expect(result[0].scannableUnits).toEqual([
+      { id: "a", checkInCode: "code-a" },
+      { id: "b", checkInCode: "code-b" },
     ])
   })
 })

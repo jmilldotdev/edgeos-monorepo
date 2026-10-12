@@ -8,6 +8,8 @@ export interface OtherPurchasedProduct {
    *  back to the checkout step it was sold from, for its icon. */
   category: string
   salesFlowId: string
+  /** Units the buyer can show at a desk, each with its own QR. */
+  scannableUnits: Array<{ id: string; checkInCode: string }>
 }
 
 export interface VisiblePassReference {
@@ -62,6 +64,16 @@ export function projectOtherPurchasedProducts(
 
       if (quantity === 0) continue
 
+      const scannableUnits = (line.units ?? [])
+        .filter(
+          (unit) =>
+            unit.active &&
+            unit.requires_check_in &&
+            unit.check_in_code &&
+            !visiblePassIds.has(unit.id),
+        )
+        .map((unit) => ({ id: unit.id, checkInCode: unit.check_in_code }))
+
       const existing = products.get(line.product_id)
       products.set(line.product_id, {
         id: line.product_id,
@@ -69,6 +81,10 @@ export function projectOtherPurchasedProducts(
         quantity: (existing?.quantity ?? 0) + quantity,
         category: existing?.category ?? line.product_category,
         salesFlowId: existing?.salesFlowId ?? payment.sales_flow_id,
+        scannableUnits: [
+          ...(existing?.scannableUnits ?? []),
+          ...scannableUnits,
+        ],
       })
     }
   }

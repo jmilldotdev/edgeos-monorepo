@@ -1,12 +1,14 @@
 import { useQueries } from "@tanstack/react-query"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, QrCode } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { TicketingStepsService } from "@/client"
 import { imageOptimization } from "@/lib/image-optimization"
 import type { OtherPurchasedProduct } from "../otherProductsProjection"
 import { resolveOtherProductVisual } from "../otherProductVisual"
+import QRcode from "./common/QRcode"
 
 export function OtherPurchasedProducts({
   products,
@@ -22,6 +24,17 @@ export function OtherPurchasedProducts({
   catalog?: Array<{ id: string; image_url?: string | null }>
 }) {
   const { t } = useTranslation()
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
+  // Resolve the selection from current data, so a unit revoked on refetch
+  // also closes its QR.
+  const activeProduct = products.find((product) =>
+    product.scannableUnits.some((unit) => unit.id === selectedUnitId),
+  )
+  const activeUnitIndex =
+    activeProduct?.scannableUnits.findIndex(
+      (unit) => unit.id === selectedUnitId,
+    ) ?? -1
+  const activeUnit = activeProduct?.scannableUnits[activeUnitIndex]
   const flowIds = [...new Set(products.map((product) => product.salesFlowId))]
   // Same key as the checkout's own step query, so a buyer who just paid
   // reads these from cache.
@@ -90,9 +103,29 @@ export function OtherPurchasedProducts({
                   {product.name}
                 </p>
               </div>
-              <span className="shrink-0 text-sm font-medium text-pass-text">
-                × {product.quantity}
-              </span>
+              <div className="flex shrink-0 items-center gap-3">
+                {product.scannableUnits.length > 0 && (
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {product.scannableUnits.map((unit, index) => (
+                      <button
+                        key={unit.id}
+                        type="button"
+                        onClick={() => setSelectedUnitId(unit.id)}
+                        aria-label={t("orders.show_unit_qr_label", {
+                          product: product.name,
+                          number: index + 1,
+                        })}
+                        className="cursor-pointer text-pass-text transition-colors hover:text-pass-title"
+                      >
+                        <QrCode className="size-5" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <span className="text-sm font-medium text-pass-text">
+                  × {product.quantity}
+                </span>
+              </div>
             </li>
           )
         })}
@@ -105,6 +138,19 @@ export function OtherPurchasedProducts({
         {t("passes.view_payment_details")}
         <ArrowRight className="size-4" />
       </Link>
+
+      <QRcode
+        check_in_code={activeUnit?.checkInCode ?? ""}
+        isOpen={activeUnit != null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedUnitId(null)
+        }}
+        title={t("orders.unit_qr_title", {
+          product: activeProduct?.name,
+          number: activeUnitIndex + 1,
+        })}
+        description={t("orders.unit_qr_description")}
+      />
     </section>
   )
 }
