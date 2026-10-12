@@ -5732,8 +5732,15 @@ export const AttendeeCreateSchema = {
             title: 'Name'
         },
         category_id: {
-            type: 'string',
-            format: 'uuid',
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
             title: 'Category Id'
         },
         category: {
@@ -5783,7 +5790,7 @@ export const AttendeeCreateSchema = {
         }
     },
     type: 'object',
-    required: ['name', 'category_id'],
+    required: ['name'],
     title: 'AttendeeCreate',
     description: `Attendee schema for creation (by user).
 

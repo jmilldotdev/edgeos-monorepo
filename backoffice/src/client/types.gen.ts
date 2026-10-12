@@ -1182,7 +1182,7 @@ export type AttendeeCategoryUpdate = {
  */
 export type AttendeeCreate = {
     name: string;
-    category_id: string;
+    category_id?: (string | null);
     category?: (string | null);
     email?: (string | null);
     gender?: (string | null);

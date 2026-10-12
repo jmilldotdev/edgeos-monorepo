@@ -314,6 +314,12 @@ async def create_my_attendee_for_popup(
     # Validate category_id belongs to this popup (closes security hole per spec)
     from app.api.attendee_category.crud import attendee_categories_crud as cat_crud
 
+    if attendee_in.category_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="An attendee category is required",
+        )
+
     category_row = cat_crud.get(db, attendee_in.category_id)
     if category_row is None or category_row.popup_id != popup_id:
         raise HTTPException(

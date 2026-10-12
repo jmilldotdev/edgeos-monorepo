@@ -120,7 +120,7 @@ class AttendeeCreate(BaseModel):
     """
 
     name: str
-    category_id: uuid.UUID
+    category_id: uuid.UUID | None = None
     # Legacy string kept for existing callers; prefer category_id for new code
     category: str | None = None
     email: str | None = None
