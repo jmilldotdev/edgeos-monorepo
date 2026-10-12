@@ -314,49 +314,49 @@ async def create_my_attendee_for_popup(
     # Validate category_id belongs to this popup (closes security hole per spec)
     from app.api.attendee_category.crud import attendee_categories_crud as cat_crud
 
-    if attendee_in.category_id is not None:
-        category_row = cat_crud.get(db, attendee_in.category_id)
-        if category_row is None or category_row.popup_id != popup_id:
+    if attendee_in.category_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="An attendee category is required",
+        )
+
+    category_row = cat_crud.get(db, attendee_in.category_id)
+    if category_row is None or category_row.popup_id != popup_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=[
+                {
+                    "code": "invalid_category",
+                    "message": "Category does not belong to this popup",
+                }
+            ],
+        )
+    if category_row.max_per_application is not None:
+        count = crud.attendees_crud.count_party_by_category(
+            db,
+            human_id=current_human.id,
+            popup_id=popup_id,
+            category_id=category_row.id,
+            tenant_id=current_human.tenant_id,
+        )
+        if count >= category_row.max_per_application:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=[
                     {
-                        "code": "invalid_category",
-                        "message": "Category does not belong to this popup",
+                        "code": "max_reached",
+                        "message": f"Limit of {category_row.max_per_application} reached for this category",
                     }
                 ],
             )
-        if category_row.max_per_application is not None:
-            count = crud.attendees_crud.count_party_by_category(
-                db,
-                human_id=current_human.id,
-                popup_id=popup_id,
-                category_id=category_row.id,
-                tenant_id=current_human.tenant_id,
-            )
-            if count >= category_row.max_per_application:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=[
-                        {
-                            "code": "max_reached",
-                            "message": f"Limit of {category_row.max_per_application} reached for this category",
-                        }
-                    ],
-                )
-        # Validate declarative required_fields (e.g. a kid's date_of_birth) are
-        # present in the submitted additional_data. Permissive toward extra keys.
-        validate_required_fields(
-            category_row.required_fields or [],
-            attendee_in.additional_data or {},
-        )
-        # Derive legacy category string from FK for backward compatibility
-        effective_category = category_row.key
-        effective_category_id = category_row.id
-    else:
-        # Legacy fallback: category string provided directly (deprecated path)
-        effective_category = attendee_in.category or "main"
-        effective_category_id = None
+    # Validate declarative required_fields (e.g. a kid's date_of_birth) are
+    # present in the submitted additional_data. Permissive toward extra keys.
+    validate_required_fields(
+        category_row.required_fields or [],
+        attendee_in.additional_data or {},
+    )
+    effective_category = category_row.key
+    effective_category_id = category_row.id
 
     # The mirror of the 409 that stops a companion creating their own
     # application (`application/router.py`). That one guards the direction

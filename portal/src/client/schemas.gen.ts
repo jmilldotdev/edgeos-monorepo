@@ -19928,6 +19928,17 @@ export const InvitePublicSchema = {
             ],
             title: 'Created By'
         },
+        issuer_email: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Issuer Email'
+        },
         referrer_human_id: {
             anyOf: [
                 {

@@ -102,7 +102,9 @@ describe("invites list query", () => {
     render(<InvitesTableContent popupId="popup-1" />, { wrapper: Wrapper })
 
     await user.click(
-      await screen.findByRole("button", { name: "Shared by attendees" }),
+      await screen.findByRole("button", {
+        name: "Referrals",
+      }),
     )
 
     expect(mocks.setPagination).toHaveBeenCalledWith({

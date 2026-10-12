@@ -15,7 +15,6 @@ from app.api.payment.schemas import PaymentProductResponse
 
 REVISION = "b7d3e1f8c2a4"
 PREVIOUS_REVISION = "a6f4c8d2e9b1"
-HEAD_REVISION = "a1d3f5b7c9e2"
 
 
 def _config(connection) -> Config:
@@ -79,7 +78,6 @@ def test_models_and_schemas_map_nullable_additive_fields() -> None:
 
 def test_fresh_upgrade_preserves_metadata_rls_and_chain(migration_test_engine) -> None:
     script = ScriptDirectory.from_config(Config("alembic.ini"))
-    assert script.get_heads() == [HEAD_REVISION]
     assert script.get_revision(REVISION).down_revision == PREVIOUS_REVISION
 
     with migration_test_engine.begin() as connection:
@@ -120,7 +118,7 @@ def test_fresh_upgrade_preserves_metadata_rls_and_chain(migration_test_engine) -
         """)
         ).one()
         assert rls == (True, 1)
-        command.upgrade(config, HEAD_REVISION)
+        command.upgrade(config, "head")
 
 
 def test_historical_backfill_uses_only_trustworthy_evidence_and_reports(
@@ -175,7 +173,7 @@ def test_historical_backfill_uses_only_trustworthy_evidence_and_reports(
             """,
             ids,
         )
-        command.upgrade(config, HEAD_REVISION)
+        command.upgrade(config, "head")
 
 
 def test_downgrade_refuses_attendee_less_or_revoked_history(
@@ -221,4 +219,4 @@ def test_downgrade_refuses_attendee_less_or_revoked_history(
         )
         command.downgrade(_config(connection), PREVIOUS_REVISION)
         assert "revoked_at" not in _column_names(connection)
-        command.upgrade(_config(connection), HEAD_REVISION)
+        command.upgrade(_config(connection), "head")

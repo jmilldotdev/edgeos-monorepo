@@ -2,6 +2,7 @@ import asyncio
 import importlib
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from decimal import Decimal
 from threading import Event
 from types import SimpleNamespace
@@ -91,6 +92,7 @@ def _payment(
     existing_attendee: Attendees | None = None,
     quantity: int = 1,
     payment_type: PaymentType = PaymentType.PASS_PURCHASE,
+    assign_primary_category: bool = True,
 ) -> tuple[Payments, PaymentRecipients | None, PaymentProducts | None]:
     payment = Payments(
         tenant_id=popup.tenant_id,
@@ -114,7 +116,7 @@ def _payment(
         existing_attendee_id=existing_attendee.id if existing_attendee else None,
         name=human.first_name if human else "Accountless guest",
         email=human.email if human else "guest@test.com",
-        category_id=_category(db, popup).id,
+        category_id=_category(db, popup).id if assign_primary_category else None,
         profile_snapshot={"dietary_restriction": "vegan"},
     )
     db.add(recipient)
@@ -193,7 +195,7 @@ def test_approval_materializes_buyer_managed_attendee_and_repairs_missing_lineag
     assert attendee is not None
     assert attendee.human_id is None
     assert attendee.managed_by_human_id == buyer.id
-    assert attendee.category_id is None
+    assert attendee.category_id == _category(db, popup_tenant_a).id
     assert attendee.additional_data == {"dietary_restriction": "vegan"}
     assert line.attendee_id == attendee.id
     assert [ticket.unit_index for ticket in tickets] == [0, 1]
@@ -214,6 +216,39 @@ def test_approval_materializes_buyer_managed_attendee_and_repairs_missing_lineag
     assert all(ticket.revoked_at is not None for ticket in _tickets(db, payment.id))
     assert db.get(PaymentRecipients, recipient.id) is not None
     assert db.get(Attendees, attendee.id) is not None
+
+
+def test_approved_payment_materializes_attendee_without_primary_category(
+    db: Session, tenant_a: Tenants, popup_tenant_a: Popups
+) -> None:
+    buyer = _human(db, tenant_a, "BuyerWithoutCategory")
+    product = _product(db, popup_tenant_a)
+    primary_category = _category(db, popup_tenant_a)
+    primary_category.deleted_at = datetime.now(UTC)
+    db.add(primary_category)
+    db.commit()
+    payment, recipient, line = _payment(
+        db,
+        popup_tenant_a,
+        buyer,
+        product,
+        assign_primary_category=False,
+    )
+
+    payments_crud.approve_payment(db, payment.id)
+    db.refresh(recipient)
+    db.refresh(line)
+    attendee = db.get(Attendees, recipient.attendee_id)
+
+    assert attendee is not None
+    assert attendee.category_id is None
+    assert attendee.application_id is None
+    assert line.attendee_id == attendee.id
+    assert len(_tickets(db, payment.id)) == 1
+
+    primary_category.deleted_at = None
+    db.add(primary_category)
+    db.commit()
 
 
 def test_same_access_product_keeps_recipient_price_category_and_qr_lines_separate(
@@ -287,7 +322,7 @@ def test_same_access_product_keeps_recipient_price_category_and_qr_lines_separat
         (
             "discount-adult",
             adult_category.id,
-            None,
+            adult_category.id,
             Decimal("25.00"),
             adult_line.id,
         ),
@@ -862,9 +897,7 @@ def test_recipient_role_snapshot_is_independent_of_product_legacy_category(
     assert _attendee_count(db, popup_tenant_a) == attendee_count + 1
 
 
-@pytest.mark.parametrize(
-    "invalid_scope", ["recipient_tenant", "recipient_category", "product_popup"]
-)
+@pytest.mark.parametrize("invalid_scope", ["recipient_tenant", "product_popup"])
 def test_approval_rejects_cross_scope_snapshot_data(
     db: Session,
     tenant_a: Tenants,
@@ -893,6 +926,32 @@ def test_approval_rejects_cross_scope_snapshot_data(
     assert _tickets(db, payment.id) == []
 
 
+def test_approved_payment_uses_popup_primary_when_recipient_category_is_stale(
+    db: Session,
+    tenant_a: Tenants,
+    popup_tenant_a: Popups,
+    popup_tenant_b: Popups,
+) -> None:
+    buyer = _human(db, tenant_a, "StaleCategoryBuyer")
+    product = _product(db, popup_tenant_a)
+    primary_category = _category(db, popup_tenant_a)
+    stale_category = _category(db, popup_tenant_b)
+    payment, recipient, line = _payment(db, popup_tenant_a, buyer, product)
+    recipient.category_id = stale_category.id
+    db.add(recipient)
+    db.commit()
+
+    payments_crud.approve_payment(db, payment.id)
+    db.refresh(recipient)
+    db.refresh(line)
+    attendee = db.get(Attendees, recipient.attendee_id)
+
+    assert attendee is not None
+    assert attendee.category_id == primary_category.id
+    assert line.attendee_id == attendee.id
+    assert len(_tickets(db, payment.id)) == 1
+
+
 def test_buyer_reconciliation_rejects_a_rebound_line(
     db: Session, tenant_a: Tenants, popup_tenant_a: Popups
 ) -> None:
@@ -907,6 +966,7 @@ def test_buyer_reconciliation_rejects_a_rebound_line(
         popup_id=popup_tenant_a.id,
         managed_by_human_id=buyer.id,
         name="Other Person",
+        category_id=_category(db, popup_tenant_a).id,
     )
     db.add(other_attendee)
     db.flush()

@@ -13,10 +13,11 @@ from sqlmodel import Session, func, select
 
 from app.api.attendee.crud import attendees_crud
 from app.api.attendee.models import Attendees
+from app.api.attendee_category.crud import attendee_categories_crud
 from app.api.human.models import Humans
 from app.api.popup.models import Popups
 from app.api.tenant.models import Tenants
-from tests._flow_helpers import application_flow_id
+from tests._flow_helpers import application_flow_id, provision_default_flow
 
 
 def _make_popup(db: Session, tenant: Tenants, *, suffix: str) -> Popups:
@@ -28,6 +29,7 @@ def _make_popup(db: Session, tenant: Tenants, *, suffix: str) -> Popups:
     )
     db.add(popup)
     db.flush()
+    provision_default_flow(db, popup, sale_type="application")
     return popup
 
 
@@ -59,8 +61,11 @@ def _make_app_attendee(
     from app.api.application.models import Applications
     from app.api.application.schemas import ApplicationStatus
 
+    flow_id = application_flow_id(db, popup.id)
+    category = attendee_categories_crud.get_primary_for_flow(db, flow_id)
+    assert category is not None
     application = Applications(
-        sales_flow_id=application_flow_id(db, popup.id),
+        sales_flow_id=flow_id,
         id=uuid.uuid4(),
         tenant_id=tenant.id,
         popup_id=popup.id,
@@ -79,7 +84,7 @@ def _make_app_attendee(
         human_id=person.id,
         name=name,
         email=person.email,
-        category="main",
+        category_id=category.id,
     )
     db.add(attendee)
     db.flush()
@@ -94,6 +99,9 @@ def _make_direct_attendee(
     *,
     name: str = "Direct Attendee",
 ) -> Attendees:
+    flow_id = application_flow_id(db, popup.id)
+    category = attendee_categories_crud.get_primary_for_flow(db, flow_id)
+    assert category is not None
     attendee = Attendees(
         id=uuid.uuid4(),
         tenant_id=tenant.id,
@@ -102,7 +110,7 @@ def _make_direct_attendee(
         human_id=human.id,
         name=name,
         email=human.email,
-        category="main",
+        category_id=category.id,
     )
     db.add(attendee)
     db.flush()
@@ -212,6 +220,10 @@ class TestFindOrCreateBuyerAttendee:
         buyer = _make_human(db, tenant_a)
         child = _make_human(db, tenant_a)
         party = _make_app_attendee(db, tenant_a, popup, buyer, attendee_human=child)
+        category = attendee_categories_crud.get_primary_for_flow(
+            db, application_flow_id(db, popup.id)
+        )
+        assert category is not None
         buyer_row = Attendees(
             id=uuid.uuid4(),
             tenant_id=tenant_a.id,
@@ -220,7 +232,7 @@ class TestFindOrCreateBuyerAttendee:
             human_id=buyer.id,
             name="The Buyer",
             email=buyer.email,
-            category="main",
+            category_id=category.id,
         )
         db.add(buyer_row)
         db.commit()
