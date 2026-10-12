@@ -311,6 +311,40 @@ class AttendeesCRUD(BaseCRUD[Attendees, AttendeeCreate, AttendeeUpdate]):
         if email and not human_id:
             human_id = self._find_human_id_by_email(session, email, tenant_id)
 
+        if category_id is None:
+            from app.api.attendee_category.crud import attendee_categories_crud
+
+            if application_id is not None:
+                from app.api.application.models import Applications
+
+                application = session.get(Applications, application_id)
+                main_category = (
+                    attendee_categories_crud.get_primary_for_flow(
+                        session, application.sales_flow_id
+                    )
+                    if application is not None
+                    else None
+                )
+            else:
+                main_category = attendee_categories_crud.get_primary_for_popup(
+                    session, popup_id
+                )
+            if main_category is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="A primary attendee category must be configured before creating attendees",
+                )
+            category_id = main_category.id
+        else:
+            from app.api.attendee_category.crud import attendee_categories_crud
+
+            category = attendee_categories_crud.get(session, category_id)
+            if category is None or category.popup_id != popup_id:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Attendee category must belong to the popup",
+                )
+
         attendee = Attendees(
             tenant_id=tenant_id,
             application_id=application_id,
@@ -467,11 +501,29 @@ class AttendeesCRUD(BaseCRUD[Attendees, AttendeeCreate, AttendeeUpdate]):
                 category_id=category_id,
             )
 
+        if category_id is None:
+            from app.api.application.models import Applications
+            from app.api.attendee_category.crud import attendee_categories_crud
+
+            application = session.get(Applications, application_id)
+            category = (
+                attendee_categories_crud.get_primary_for_flow(
+                    session, application.sales_flow_id
+                )
+                if application is not None
+                else None
+            )
+            if category is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="A primary attendee category must be configured before creating attendees",
+                )
+            category_id = category.id
+
         existing.application_id = application_id
         existing.name = name
         # They are the applicant here, whatever the row called them before.
-        if category_id is not None:
-            existing.category_id = category_id
+        existing.category_id = category_id
         if email and not existing.email:
             existing.email = email.lower()
         if gender and not existing.gender:
@@ -546,13 +598,18 @@ class AttendeesCRUD(BaseCRUD[Attendees, AttendeeCreate, AttendeeUpdate]):
         enforce_trial_attendee_cap(session, tenant_id)
 
         main_cat = attendee_categories_crud.get_primary_for_popup(session, popup_id)
+        if main_cat is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="A primary attendee category must be configured before creating attendees",
+            )
         attendee = Attendees(
             tenant_id=tenant_id,
             application_id=None,
             popup_id=popup_id,
             human_id=human_id,
             name=name,
-            category_id=main_cat.id if main_cat else None,
+            category_id=main_cat.id,
             email=email.lower() if email else None,
         )
         session.add(attendee)
@@ -1146,7 +1203,8 @@ class AttendeesCRUD(BaseCRUD[Attendees, AttendeeCreate, AttendeeUpdate]):
         """Assign popup products atomically, without a payment or sales flow.
 
         Existing applications are not part of a manual assignment. New people
-        receive an application-less attendee with no flow-owned category.
+        receive an application-less attendee assigned to the popup's primary
+        category.
         """
         from app.api.application.schemas import GrantedAttendeeInfo
         from app.api.human.crud import humans_crud

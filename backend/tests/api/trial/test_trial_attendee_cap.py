@@ -17,6 +17,7 @@ from app.api.attendee.crud import attendees_crud
 from app.api.popup.models import Popups
 from app.api.tenant.models import Tenants
 from app.services import trial_limits
+from tests._flow_helpers import application_flow_id
 
 
 def _make_tenant_with_popup(db: Session, *, is_trial: bool) -> tuple[Tenants, Popups]:
@@ -38,6 +39,7 @@ def _make_tenant_with_popup(db: Session, *, is_trial: bool) -> tuple[Tenants, Po
     db.add(popup)
     db.commit()
     db.refresh(popup)
+    application_flow_id(db, popup.id)
     return tenant, popup
 
 

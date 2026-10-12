@@ -3,7 +3,7 @@ import { toast } from "sonner"
 import { AttendeesService } from "@/client"
 import { queryKeys } from "@/lib/query-keys"
 import { useCityProvider } from "@/providers/cityProvider"
-import type { CreateAttendee } from "@/types/Attendee"
+import type { CreateAttendee, UpdateAttendee } from "@/types/Attendee"
 import useAuth from "./useAuth"
 
 const handleNetworkError = (error: unknown) => {
@@ -92,7 +92,7 @@ const useAttendee = () => {
       data,
     }: {
       attendeeId: string
-      data: CreateAttendee
+      data: UpdateAttendee
     }) => {
       const city = getCity()
       return AttendeesService.updateMyAttendeeForPopup({
@@ -132,7 +132,7 @@ const useAttendee = () => {
     return removeMutation.mutateAsync(attendeeId)
   }
 
-  const editAttendee = async (attendeeId: string, data: CreateAttendee) => {
+  const editAttendee = async (attendeeId: string, data: UpdateAttendee) => {
     const city = getCity()
     if (!currentHuman || !city) return
     return editMutation.mutateAsync({ attendeeId, data })

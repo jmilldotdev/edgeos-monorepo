@@ -13,7 +13,6 @@ from sqlalchemy import text
 
 REVISION = "f4b8c2d7e1a9"
 PREVIOUS_REVISION = "c9a4e7b2d1f8"
-HEAD_REVISION = "a1d3f5b7c9e2"
 MIGRATION_FILENAME = f"{REVISION}_materialize_historical_product_units.py"
 
 
@@ -256,7 +255,7 @@ def test_upgrade_converges_operational_slots_without_replacing_history(
                 """),
                 params,
             )
-            command.upgrade(config, HEAD_REVISION)
+            command.upgrade(config, "head")
 
 
 def test_backfill_excludes_nonapproved_nonoperational_and_ambiguous_lines(
@@ -391,20 +390,20 @@ def test_backfill_excludes_nonapproved_nonoperational_and_ambiguous_lines(
                 """),
                 params,
             )
-            command.upgrade(config, HEAD_REVISION)
+            command.upgrade(config, "head")
 
 
-def test_materialization_revision_precedes_the_single_head() -> None:
+def test_materialization_revision_preserves_its_parent() -> None:
     script = ScriptDirectory.from_config(Config("alembic.ini"))
-    assert script.get_heads() == [HEAD_REVISION]
     assert script.get_revision(REVISION).down_revision == PREVIOUS_REVISION
 
 
 def test_testcontainer_schema_is_at_repository_head(
     migration_test_engine,
 ) -> None:
+    script = ScriptDirectory.from_config(Config("alembic.ini"))
     with migration_test_engine.connect() as connection:
         assert (
             MigrationContext.configure(connection).get_current_revision()
-            == HEAD_REVISION
+            == script.get_current_head()
         )

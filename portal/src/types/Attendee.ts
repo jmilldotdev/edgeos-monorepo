@@ -70,8 +70,10 @@ export interface CreateAttendee {
   /** @deprecated Use category_id instead — kept for backward compat with edit flows */
   category?: AttendeeCategory
   /** UUID of the attendee category row */
-  category_id?: string
+  category_id: string
   gender: string
   /** Declarative required_fields answers (e.g. { age_group: "kid" }) */
   additional_data?: Record<string, unknown>
 }
+
+export type UpdateAttendee = Omit<CreateAttendee, "category_id">
