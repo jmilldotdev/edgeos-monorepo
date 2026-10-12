@@ -4273,9 +4273,8 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
                         AttendeeCategories.deleted_at.is_(None),  # type: ignore[union-attr]
                     )
                 ).first()
-                if buyer_primary_category is None:
-                    raise self._fulfillment_error()
         companion_category_id = None
+        recipient_category_id = None
         if recipient.category_id is not None:
             category = session.exec(
                 select(AttendeeCategories).where(
@@ -4285,13 +4284,23 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
                     AttendeeCategories.deleted_at.is_(None),  # type: ignore[union-attr]
                 )
             ).first()
-            if category is None or (
-                payment.sales_flow_id is not None
-                and category.sales_flow_id != payment.sales_flow_id
+            if category is not None and (
+                payment.sales_flow_id is None
+                or category.sales_flow_id == payment.sales_flow_id
             ):
-                raise self._fulfillment_error()
-            if recipient.human_id is None and not category.is_primary:
-                companion_category_id = category.id
+                recipient_category_id = category.id
+                if recipient.human_id is None and not category.is_primary:
+                    companion_category_id = category.id
+
+        if buyer_primary_category is None:
+            from app.api.attendee_category.crud import attendee_categories_crud
+
+            buyer_primary_category = attendee_categories_crud.get_primary_for_popup(
+                session, payment.popup_id
+            )
+        buyer_primary_category_id = (
+            buyer_primary_category.id if buyer_primary_category is not None else None
+        )
 
         if (
             recipient.attendee_id is not None
@@ -4355,10 +4364,10 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
             if buyer_application is not None and attendee is not None:
                 if attendee.application_id is None:
                     attendee.application_id = buyer_application.id
-                    attendee.category_id = buyer_primary_category.id
+                    attendee.category_id = buyer_primary_category_id
                     session.add(attendee)
-                elif attendee.category_id is None:
-                    attendee.category_id = buyer_primary_category.id
+                elif attendee.category_id is None and buyer_primary_category_id:
+                    attendee.category_id = buyer_primary_category_id
                     session.add(attendee)
         elif attendee is not None:
             authorized = attendees_crud.get_for_human_popup(
@@ -4370,6 +4379,16 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
             )
             if authorized is None:
                 raise self._fulfillment_error()
+
+        if attendee is not None and attendee.category_id is None:
+            category_id = (
+                companion_category_id
+                or recipient_category_id
+                or buyer_primary_category_id
+            )
+            if category_id is not None:
+                attendee.category_id = category_id
+                session.add(attendee)
 
         if attendee is None:
             from app.services.trial_limits import enforce_trial_attendee_cap
@@ -4387,13 +4406,14 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
                 ),
                 name=recipient.name,
                 email=recipient.email,
-                # Establish a new companion's category from the validated
-                # recipient. Buyers remain Main; existing attendees retain
-                # their category even when purchasing through another flow.
+                # Use the primary category for buyers when configured. A
+                # previously approved payment still materializes without one.
                 category_id=(
-                    buyer_primary_category.id
-                    if buyer_primary_category is not None
+                    buyer_primary_category_id
+                    if recipient.human_id == buyer_human_id
                     else companion_category_id
+                    or recipient_category_id
+                    or buyer_primary_category_id
                 ),
                 additional_data=recipient.profile_snapshot,
             )

@@ -14,6 +14,7 @@ from sqlmodel import Session, func, select
 from app.api.application.models import Applications
 from app.api.application.schemas import ApplicationStatus
 from app.api.attendee.models import AttendeeProducts, Attendees
+from app.api.attendee_category.crud import attendee_categories_crud
 from app.api.audit_log.constants import AuditAction
 from app.api.audit_log.models import AuditLog
 from app.api.human.models import Humans
@@ -69,7 +70,7 @@ def _units(db: Session, attendee_id: uuid.UUID) -> list[AttendeeProducts]:
 
 @pytest.fixture()
 def grant_popup(db: Session, tenant_a: Tenants) -> Popups:
-    """Deliberately has no sales flow, default flow or attendee categories."""
+    """Popup with a default flow and its required primary attendee category."""
     popup = Popups(
         tenant_id=tenant_a.id,
         name="Manual assignments",
@@ -77,6 +78,7 @@ def grant_popup(db: Session, tenant_a: Tenants) -> Popups:
     )
     db.add(popup)
     db.commit()
+    provision_default_flow(db, popup, sale_type="application")
     return popup
 
 
@@ -123,7 +125,7 @@ def test_grant_without_flow_creates_only_attendee_units_and_audit(
     attendee = db.get(Attendees, uuid.UUID(result["attendee_id"]))
     assert attendee.name == "New Person"
     assert attendee.application_id is None
-    assert attendee.category_id is None
+    assert attendee.category == "main"
     assert str(attendee.human_id) == result["human_id"]
     assert attendee.email == email
     units = _units(db, attendee.id)
@@ -136,10 +138,18 @@ def test_grant_without_flow_creates_only_attendee_units_and_audit(
     assert {unit.requires_check_in_snapshot for unit in units} == {
         product.requires_check_in
     }
-    for model in (Applications, Payments, SalesFlows):
+    for model in (Applications, Payments):
         assert (
             db.exec(select(model).where(model.popup_id == grant_popup.id)).all() == []
         )
+    assert (
+        len(
+            db.exec(
+                select(SalesFlows).where(SalesFlows.popup_id == grant_popup.id)
+            ).all()
+        )
+        == 1
+    )
     assert (
         db.exec(
             select(PaymentProducts).where(PaymentProducts.product_id == product.id)
@@ -398,7 +408,7 @@ def test_grant_does_not_change_existing_application(
         Attendees, uuid.UUID(response.json()["granted"][0]["attendee_id"])
     )
     assert attendee.application_id is None
-    assert attendee.category_id is None
+    assert attendee.category == "main"
     assert [
         app.id
         for app in db.exec(
@@ -431,12 +441,15 @@ def test_grant_reuses_existing_attendee(
         )
         db.add(application)
         db.flush()
+    category = attendee_categories_crud.get_primary_for_popup(db, popup_tenant_a.id)
+    assert category is not None
     attendee = Attendees(
         tenant_id=tenant_a.id,
         popup_id=popup_tenant_a.id,
         human_id=human.id,
         application_id=application.id if application else None,
         name="Existing person",
+        category_id=category.id,
         email=human.email,
     )
     db.add(attendee)

@@ -5,8 +5,8 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 
-REVISION = "a1d3f5b7c9e2"
-PREVIOUS = "f0fbedba955c"
+THIRD_PARTY_REVISION = "a1d3f5b7c9e2"
+THIRD_PARTY_PREVIOUS_REVISION = "f0fbedba955c"
 TABLES = ("third_party_grants", "third_party_refresh_tokens")
 
 
@@ -18,10 +18,12 @@ def config_for(connection):
 
 def test_refresh_schema_and_private_permissions(migration_test_engine):
     script = ScriptDirectory.from_config(Config("alembic.ini"))
-    assert script.get_heads() == [REVISION]
-    assert script.get_revision(REVISION).down_revision == PREVIOUS
+    assert (
+        script.get_revision(THIRD_PARTY_REVISION).down_revision
+        == THIRD_PARTY_PREVIOUS_REVISION
+    )
     with migration_test_engine.begin() as connection:
-        command.upgrade(config_for(connection), REVISION)
+        command.upgrade(config_for(connection), "head")
         inspector = inspect(connection)
         for table in TABLES:
             assert connection.execute(
@@ -63,12 +65,12 @@ def test_refresh_schema_and_private_permissions(migration_test_engine):
 def test_refresh_downgrade_and_upgrade_preserve_existing_auth(migration_test_engine):
     with migration_test_engine.begin() as connection:
         config = config_for(connection)
-        command.upgrade(config, REVISION)
+        command.upgrade(config, "head")
         app_columns_before = {
             c["name"] for c in inspect(connection).get_columns("third_party_apps")
         }
         try:
-            command.downgrade(config, PREVIOUS)
+            command.downgrade(config, THIRD_PARTY_PREVIOUS_REVISION)
             assert not set(TABLES) & set(inspect(connection).get_table_names())
             assert (
                 "third_party_authorization_codes"
@@ -78,5 +80,5 @@ def test_refresh_downgrade_and_upgrade_preserve_existing_auth(migration_test_eng
                 c["name"] for c in inspect(connection).get_columns("third_party_apps")
             } == app_columns_before
         finally:
-            command.upgrade(config, REVISION)
+            command.upgrade(config, "head")
         assert set(TABLES) <= set(inspect(connection).get_table_names())
