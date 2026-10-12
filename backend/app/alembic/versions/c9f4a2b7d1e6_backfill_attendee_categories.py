@@ -1,4 +1,4 @@
-"""Backfill attendee categories from their owning flow.
+"""Backfill attendee categories from their owning flow when one is available.
 
 Revision ID: c9f4a2b7d1e6
 Revises: a1d3f5b7c9e2
@@ -42,15 +42,5 @@ def upgrade() -> None:
             """
         )
     )
-    remaining = connection.execute(
-        sa.text("SELECT count(*) FROM attendees WHERE category_id IS NULL")
-    ).scalar_one()
-    if remaining:
-        raise RuntimeError(
-            f"Cannot backfill attendee categories: {remaining} attendees have no "
-            "primary category in their application or popup default flow"
-        )
-
-
 def downgrade() -> None:
     pass
