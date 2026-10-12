@@ -152,6 +152,7 @@ class InvitePublic(BaseModel):
     redeemed_by_human_id: uuid.UUID | None = None
     expires_at: datetime | None = None
     created_by: uuid.UUID | None = None
+    issuer_email: str | None = None
     referrer_human_id: uuid.UUID | None = None
     # Set on an attendee link into a popup its owner is not in: the popup
     # whose access let them share it.

@@ -4240,6 +4240,7 @@ export type InvitePublic = {
     redeemed_by_human_id?: (string | null);
     expires_at?: (string | null);
     created_by?: (string | null);
+    issuer_email?: (string | null);
     referrer_human_id?: (string | null);
     source_popup_id?: (string | null);
     created_at: string;

@@ -212,7 +212,7 @@ export function InviteForm({ defaultValues, onSuccess }: InviteFormProps) {
             {(field) => (
               <div>
                 <HeroInput
-                  placeholder="Invite token (auto-generated if empty)"
+                  placeholder="Link code (auto-generated if empty)"
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
