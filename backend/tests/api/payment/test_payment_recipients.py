@@ -323,7 +323,7 @@ def test_transferred_legacy_self_is_rejected_before_provider_creation(
         popup_id=popup.id,
         application_id=application.id,
         name="Owned elsewhere",
-        category_id=None,
+        category_id=category.id,
         managed_by_human_id=other_manager.id,
     )
     db.add(attendee)
@@ -504,7 +504,7 @@ def test_manager_owned_companion_uses_current_role_without_legacy_category_chang
         popup_id=popup.id,
         managed_by_human_id=buyer.id,
         name="Managed companion",
-        category_id=None,
+        category_id=category.id,
     )
     db.add(companion)
     db.commit()
@@ -531,7 +531,7 @@ def test_manager_owned_companion_uses_current_role_without_legacy_category_chang
     ).one()
     assert recipient.attendee_id == companion.id
     assert recipient.category_id == category.id
-    assert companion.category_id is None
+    assert companion.category_id == category.id
 
 
 def test_section_role_is_authoritative_over_product_and_attendee_categories(
@@ -957,12 +957,14 @@ def test_recent_approved_payment_with_different_managed_recipient_is_not_reused(
         popup_id=popup.id,
         managed_by_human_id=buyer.id,
         name="First companion",
+        category_id=category.id,
     )
     second_companion = Attendees(
         tenant_id=tenant_a.id,
         popup_id=popup.id,
         managed_by_human_id=buyer.id,
         name="Second companion",
+        category_id=category.id,
     )
     db.add_all([first_companion, second_companion])
     db.commit()
@@ -1391,4 +1393,4 @@ def test_open_checkout_buyer_receives_the_current_flow_primary_role(
     attendee = db.exec(select(Attendees).where(Attendees.popup_id == popup.id)).one()
     assert attendee.name == "Open Buyer"
     assert attendee.human_id == payment.buyer_human_id
-    assert attendee.category_id is None
+    assert attendee.category_id is not None

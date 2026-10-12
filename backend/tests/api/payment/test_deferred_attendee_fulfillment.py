@@ -193,7 +193,7 @@ def test_approval_materializes_buyer_managed_attendee_and_repairs_missing_lineag
     assert attendee is not None
     assert attendee.human_id is None
     assert attendee.managed_by_human_id == buyer.id
-    assert attendee.category_id is None
+    assert attendee.category_id == _category(db, popup_tenant_a).id
     assert attendee.additional_data == {"dietary_restriction": "vegan"}
     assert line.attendee_id == attendee.id
     assert [ticket.unit_index for ticket in tickets] == [0, 1]
@@ -287,7 +287,7 @@ def test_same_access_product_keeps_recipient_price_category_and_qr_lines_separat
         (
             "discount-adult",
             adult_category.id,
-            None,
+            adult_category.id,
             Decimal("25.00"),
             adult_line.id,
         ),
@@ -907,6 +907,7 @@ def test_buyer_reconciliation_rejects_a_rebound_line(
         popup_id=popup_tenant_a.id,
         managed_by_human_id=buyer.id,
         name="Other Person",
+        category_id=_category(db, popup_tenant_a).id,
     )
     db.add(other_attendee)
     db.flush()

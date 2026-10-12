@@ -122,17 +122,15 @@ class Attendees(AttendeeBase, table=True):
 
     @property
     def category(self) -> str:
-        """Backwards-compat accessor: return the category key from the FK relationship.
+        """Return the category key from the required FK relationship.
 
         Listing endpoints must eager-load `category_ref` (selectinload) so this
         access does not trigger an extra query per attendee. When the
         relationship is not loaded SQLAlchemy lazy-loads it via the bound
         session, mirroring the pre-relationship behaviour.
         """
-        if self.category_id is None:
-            return "main"
         cat = self.category_ref
-        return cat.key if cat else "unknown"
+        return cat.key if cat is not None else "unknown"
 
     @property
     def products(self) -> list["Products"]:

@@ -805,6 +805,9 @@ def _seed_applications(
             )
         ).all()
         category_key_to_id = {cat.key: cat.id for cat in popup_categories}
+        primary_category_id = next(
+            (cat.id for cat in popup_categories if cat.is_primary), None
+        )
 
         for attendee_data in attendees_data:
             attendee_human_id = None
@@ -815,7 +818,13 @@ def _seed_applications(
             ):
                 attendee_human_id = human.id
 
-            category_id = category_key_to_id.get(cat_key) if cat_key else None
+            category_id = (
+                category_key_to_id.get(cat_key) if cat_key else primary_category_id
+            )
+            if category_id is None:
+                raise ValueError(
+                    f"No attendee category configured for application {application.id}"
+                )
 
             attendee = Attendees(
                 tenant_id=tenant_id,

@@ -4293,6 +4293,15 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
             if recipient.human_id is None and not category.is_primary:
                 companion_category_id = category.id
 
+        if buyer_primary_category is None:
+            from app.api.attendee_category.crud import attendee_categories_crud
+
+            buyer_primary_category = attendee_categories_crud.get_primary_for_popup(
+                session, payment.popup_id
+            )
+            if buyer_primary_category is None:
+                raise self._fulfillment_error()
+
         if (
             recipient.attendee_id is not None
             and recipient.existing_attendee_id is not None
@@ -4371,6 +4380,14 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
             if authorized is None:
                 raise self._fulfillment_error()
 
+        if attendee is not None and attendee.category_id is None:
+            attendee.category_id = (
+                companion_category_id
+                or recipient.category_id
+                or buyer_primary_category.id
+            )
+            session.add(attendee)
+
         if attendee is None:
             from app.services.trial_limits import enforce_trial_attendee_cap
 
@@ -4392,8 +4409,10 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
                 # their category even when purchasing through another flow.
                 category_id=(
                     buyer_primary_category.id
-                    if buyer_primary_category is not None
+                    if recipient.human_id == buyer_human_id
                     else companion_category_id
+                    or recipient.category_id
+                    or buyer_primary_category.id
                 ),
                 additional_data=recipient.profile_snapshot,
             )
