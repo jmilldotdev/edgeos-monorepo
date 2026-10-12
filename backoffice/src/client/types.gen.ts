@@ -3591,6 +3591,7 @@ export type FormSectionCreate = {
     description?: (string | null);
     order?: number;
     kind?: FormSectionKind;
+    protected?: boolean;
 };
 
 export type FormSectionKind = 'standard' | 'scholarship';
@@ -3613,6 +3614,7 @@ export type FormSectionUpdate = {
     description?: (string | null);
     order?: (number | null);
     hidden?: (boolean | null);
+    protected?: (boolean | null);
 };
 
 /**
