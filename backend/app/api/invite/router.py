@@ -431,8 +431,20 @@ async def list_invites(
         limit=limit,
     )
 
+    from app.api.human.models import Humans
+    from app.api.user.models import Users
+
+    public_results = []
+    for invite in results:
+        item = InvitePublic.model_validate(invite)
+        issuer_id = invite.referrer_human_id or invite.created_by
+        if issuer_id:
+            issuer = db.get(Humans if invite.referrer_human_id else Users, issuer_id)
+            item.issuer_email = issuer.email if issuer else None
+        public_results.append(item)
+
     return ListModel[InvitePublic](
-        results=[InvitePublic.model_validate(r) for r in results],
+        results=public_results,
         paging=Paging(limit=limit, offset=skip, total=total),
     )
 

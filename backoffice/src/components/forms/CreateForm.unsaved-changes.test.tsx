@@ -89,7 +89,7 @@ describe.each([
     name: "InviteForm",
     Form: InviteForm,
     create: mocks.createInvite,
-    placeholder: "Invite token (auto-generated if empty)",
+    placeholder: "Link code (auto-generated if empty)",
     submitLabel: "Create Invite",
   },
 ])("$name unsaved changes", ({ Form, create, placeholder, submitLabel }) => {

@@ -30,9 +30,8 @@ import { getInvitePortalUrl, getPortalBaseUrl } from "@/lib/portal-urls"
 export type Issuer = "all" | "admin" | "portal"
 
 const ISSUERS: { value: Issuer; label: string }[] = [
-  { value: "all", label: "All links" },
-  { value: "admin", label: "Made by the team" },
-  { value: "portal", label: "Shared by attendees" },
+  { value: "admin", label: "Invites" },
+  { value: "portal", label: "Referrals" },
 ]
 
 export function getInvitesQueryOptions(
@@ -96,10 +95,9 @@ function IssuerCell({ invite }: { invite: InvitePublic }) {
     queryFn: () => PopupsService.getPopup({ popupId: sourcePopupId! }),
     enabled: !!sourcePopupId,
   })
-  if (!invite.referrer_human_id) return <span className="text-sm">Team</span>
   return (
     <span className="text-sm">
-      Attendee
+      {invite.issuer_email ?? "—"}
       {sourcePopupId && (
         <span className="block text-xs text-muted-foreground">
           Shared from {source?.name ?? "another popup"}
@@ -119,7 +117,9 @@ function FlowCell({ invite }: { invite: InvitePublic }) {
 const columns: ColumnDef<InvitePublic>[] = [
   {
     accessorKey: "token",
-    header: ({ column }) => <SortableHeader label="Token" column={column} />,
+    header: ({ column }) => (
+      <SortableHeader label="Link code" column={column} />
+    ),
     cell: ({ row }) => (
       <span className="inline-flex items-center gap-2">
         <span className="font-mono text-sm">{row.original.token}</span>
@@ -199,7 +199,7 @@ export function InvitesTableContent({ popupId }: { popupId: string | null }) {
     "/invites",
   )
 
-  const [issuer, setIssuer] = useState<Issuer>("all")
+  const [issuer, setIssuer] = useState<Issuer>("admin")
   const [isResettingIssuerPage, setIsResettingIssuerPage] = useState(false)
   const pageIndex = isResettingIssuerPage ? 0 : pagination.pageIndex
 

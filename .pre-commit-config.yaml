@@ -30,6 +30,7 @@ repos:
         language: system
         types: [text]
         files: ^backoffice/
+        pass_filenames: false
 
       - id: biome-check-portal
         name: biome check (portal)
@@ -37,6 +38,7 @@ repos:
         language: system
         types: [text]
         files: ^portal/
+        pass_filenames: false
 
       - id: local-ruff-check
         name: ruff check
