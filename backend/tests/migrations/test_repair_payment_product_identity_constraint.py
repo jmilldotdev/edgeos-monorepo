@@ -12,7 +12,6 @@ from sqlalchemy.exc import IntegrityError
 
 REVISION = "a6f4c8d2e9b1"
 PREVIOUS_REVISION = "e4a7c2d9b1f6"
-HEAD_REVISION = "c9f4a2b7d1e6"
 TABLE = "payment_products"
 LEGACY_CONSTRAINT = "ck_payment_product_has_recipient_or_attendee"
 COMPATIBILITY_CONSTRAINT = "ck_payment_product_fulfillment_identity_compatibility"
@@ -295,10 +294,9 @@ def test_both_present_shape_drops_only_legacy_constraint(
             command.upgrade(config, "head")
 
 
-def test_repair_revision_precedes_the_sole_alembic_head() -> None:
+def test_repair_revision_preserves_its_revision_lineage() -> None:
     config = Config("alembic.ini")
     script = ScriptDirectory.from_config(config)
-    assert script.get_heads() == [HEAD_REVISION]
     assert script.get_revision("c9a4e7b2d1f8").down_revision == "b7d3e1f8c2a4"
     assert script.get_revision("b7d3e1f8c2a4").down_revision == REVISION
     assert script.get_revision(REVISION).down_revision == PREVIOUS_REVISION

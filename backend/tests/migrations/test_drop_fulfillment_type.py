@@ -10,7 +10,6 @@ from sqlalchemy import inspect, text
 
 REVISION = "c9a4e7b2d1f8"
 PREVIOUS_REVISION = "b7d3e1f8c2a4"
-HEAD_REVISION = "c9f4a2b7d1e6"
 TABLES = ("products", "payment_products", "attendee_products")
 INDEXES = {
     "ix_products_fulfillment_type",
@@ -98,9 +97,10 @@ def test_fresh_full_chain_upgrade_removes_fulfillment_contract(
     migration_test_engine,
 ) -> None:
     with migration_test_engine.connect() as connection:
+        script = ScriptDirectory.from_config(Config("alembic.ini"))
         assert (
             MigrationContext.configure(connection).get_current_revision()
-            == HEAD_REVISION
+            == script.get_current_head()
         )
         _assert_contract_absent(connection)
 
@@ -134,12 +134,11 @@ def test_legacy_pre_drop_upgrade_preserves_rows(
         )
         _assert_contract_absent(connection)
         _delete_contract_rows(connection, ids)
-        command.upgrade(config, HEAD_REVISION)
+        command.upgrade(config, "head")
 
 
-def test_contract_migration_is_the_single_coherent_head() -> None:
+def test_contract_migration_preserves_its_revision_lineage() -> None:
     script = ScriptDirectory.from_config(Config("alembic.ini"))
-    assert script.get_heads() == [HEAD_REVISION]
     assert script.get_revision(REVISION).down_revision == PREVIOUS_REVISION
     assert script.get_revision(PREVIOUS_REVISION).down_revision == "a6f4c8d2e9b1"
 
@@ -217,4 +216,4 @@ def test_downgrade_restores_nullable_contract_without_invented_values(
             )
         )
         _delete_contract_rows(connection, ids)
-        command.upgrade(config, HEAD_REVISION)
+        command.upgrade(config, "head")

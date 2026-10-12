@@ -5,8 +5,6 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 
-HEAD_REVISION = "c9f4a2b7d1e6"
-PREVIOUS_REVISION = "a1d3f5b7c9e2"
 THIRD_PARTY_REVISION = "a1d3f5b7c9e2"
 THIRD_PARTY_PREVIOUS_REVISION = "f0fbedba955c"
 TABLES = ("third_party_grants", "third_party_refresh_tokens")
@@ -20,14 +18,12 @@ def config_for(connection):
 
 def test_refresh_schema_and_private_permissions(migration_test_engine):
     script = ScriptDirectory.from_config(Config("alembic.ini"))
-    assert script.get_heads() == [HEAD_REVISION]
     assert (
         script.get_revision(THIRD_PARTY_REVISION).down_revision
         == THIRD_PARTY_PREVIOUS_REVISION
     )
-    assert script.get_revision(HEAD_REVISION).down_revision == PREVIOUS_REVISION
     with migration_test_engine.begin() as connection:
-        command.upgrade(config_for(connection), HEAD_REVISION)
+        command.upgrade(config_for(connection), "head")
         inspector = inspect(connection)
         for table in TABLES:
             assert connection.execute(
@@ -69,7 +65,7 @@ def test_refresh_schema_and_private_permissions(migration_test_engine):
 def test_refresh_downgrade_and_upgrade_preserve_existing_auth(migration_test_engine):
     with migration_test_engine.begin() as connection:
         config = config_for(connection)
-        command.upgrade(config, HEAD_REVISION)
+        command.upgrade(config, "head")
         app_columns_before = {
             c["name"] for c in inspect(connection).get_columns("third_party_apps")
         }
@@ -84,5 +80,5 @@ def test_refresh_downgrade_and_upgrade_preserve_existing_auth(migration_test_eng
                 c["name"] for c in inspect(connection).get_columns("third_party_apps")
             } == app_columns_before
         finally:
-            command.upgrade(config, HEAD_REVISION)
+            command.upgrade(config, "head")
         assert set(TABLES) <= set(inspect(connection).get_table_names())
