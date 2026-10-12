@@ -49,6 +49,7 @@ class FormSectionCreate(BaseModel):
     description: str | None = None
     order: int = 0
     kind: FormSectionKind = FormSectionKind.STANDARD
+    protected: bool = False
 
 
 class FormSectionUpdate(BaseModel):
@@ -56,3 +57,4 @@ class FormSectionUpdate(BaseModel):
     description: str | None = None
     order: int | None = None
     hidden: bool | None = None
+    protected: bool | None = None
