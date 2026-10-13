@@ -652,6 +652,16 @@ class EventUpdate(BaseModel):
         return self
 
 
+class EventAdminUpdate(EventUpdate):
+    """Backoffice update: save schedule and recurrence atomically.
+
+    Omit ``recurrence`` to preserve the stored rule and EXDATEs. Explicit
+    ``null`` makes the series a one-off; a rule sets/replaces the RRULE.
+    """
+
+    recurrence: RecurrenceRule | None = None
+
+
 class RecurrenceUpdate(BaseModel):
     """Body for PATCH /events/{id}/recurrence.
 
