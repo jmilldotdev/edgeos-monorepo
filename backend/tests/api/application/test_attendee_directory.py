@@ -83,7 +83,7 @@ def _human(db: Session, tenant: Tenants, first: str, last: str, **extra) -> Huma
     human = Humans(
         id=uuid.uuid4(),
         tenant_id=tenant.id,
-        email=f"{first.lower()}-{uuid.uuid4().hex[:6]}@test.com",
+        email=f"{first.lower()}-{uuid.uuid4().hex}@test.com",
         first_name=first,
         last_name=last,
         **extra,

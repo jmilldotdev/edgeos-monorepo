@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import type { ReactNode } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
+  showErrorToast: vi.fn(),
   blockerOptions: null as {
     shouldBlockFn: () => boolean
     disabled: boolean
@@ -92,10 +93,57 @@ vi.mock("@/hooks/useAuth", () => ({
 }))
 
 vi.mock("@/hooks/useCustomToast", () => ({
-  default: () => ({ showSuccessToast: vi.fn(), showErrorToast: vi.fn() }),
+  default: () => ({
+    showSuccessToast: vi.fn(),
+    showErrorToast: mocks.showErrorToast,
+  }),
 }))
 
-import { PopupsService } from "@/client"
+// Keep the real recurrence parsing/building; simplify only the picker UI.
+vi.mock("./EventForm/RepeatPicker", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./EventForm/RepeatPicker")>()
+  return {
+    ...actual,
+    RepeatPicker: ({
+      value,
+      onChange,
+    }: {
+      value: import("./EventForm/RepeatPicker").RepeatState
+      onChange: (value: import("./EventForm/RepeatPicker").RepeatState) => void
+    }) => (
+      <select
+        aria-label="Repeats"
+        value={value.mode}
+        onChange={(e) =>
+          onChange({ ...value, mode: e.target.value as typeof value.mode })
+        }
+      >
+        <option value="none">Does not repeat</option>
+        <option value="weekly">Weekly</option>
+        <option value="daily">Daily</option>
+      </select>
+    ),
+  }
+})
+
+vi.mock("./EventForm/StartTimeSelect", () => ({
+  StartTimeSelect: ({
+    value,
+    onChange,
+  }: {
+    value: string
+    onChange: (value: string) => void
+  }) => (
+    <input
+      aria-label="Start time"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  ),
+}))
+
+import { type EventPublic, EventsService, PopupsService } from "@/client"
 import { EventForm } from "./EventForm"
 
 function Wrapper({ children }: { children: ReactNode }) {
@@ -139,5 +187,116 @@ describe("EventForm unsaved changes (create)", () => {
 
     await waitFor(() => expect(mocks.blockerOptions?.disabled).toBe(false))
     expect(mocks.blockerOptions?.shouldBlockFn()).toBe(true)
+  })
+})
+
+const recurringEvent: EventPublic = {
+  id: "event-1",
+  tenant_id: "tenant-1",
+  popup_id: "popup-1",
+  owner_id: "human-1",
+  title: "Orientation",
+  start_time: "2030-01-14T07:00:00Z",
+  end_time: "2030-01-14T07:30:00Z",
+  timezone: "Asia/Kolkata",
+  status: "published",
+  custom_location_name: "Test Hall",
+  custom_location_url: "https://maps.test/hall",
+  rrule: "FREQ=WEEKLY;INTERVAL=1;BYDAY=MO;COUNT=3",
+  recurrence_exdates: ["2030-01-21T07:00:00Z"],
+}
+
+describe("EventForm atomic recurrence updates", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(EventsService.updateEvent).mockResolvedValue(recurringEvent)
+  })
+
+  it.each([
+    "none",
+    "daily",
+  ])("sends the new time and %s recurrence in a single update", async (mode) => {
+    const user = userEvent.setup()
+    const onSuccess = vi.fn()
+    render(
+      <EventForm
+        defaultValues={recurringEvent}
+        popupTimezone="Asia/Kolkata"
+        onSuccess={onSuccess}
+      />,
+      {
+        wrapper: Wrapper,
+      },
+    )
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Repeats" }),
+      mode,
+    )
+    fireEvent.change(screen.getByRole("textbox", { name: "Start time" }), {
+      target: { value: "12:00" },
+    })
+    await user.click(screen.getByRole("button", { name: "Publish Event" }))
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
+    expect(EventsService.updateEvent).toHaveBeenCalledOnce()
+    expect(EventsService.updateEvent).toHaveBeenCalledWith({
+      eventId: recurringEvent.id,
+      requestBody: expect.objectContaining({
+        start_time: "2030-01-14T06:30:00.000Z",
+        end_time: "2030-01-14T07:00:00.000Z",
+        recurrence:
+          mode === "none" ? null : { freq: "DAILY", interval: 1, count: 3 },
+      }),
+    })
+    expect(EventsService.setRecurrence).not.toHaveBeenCalled()
+  })
+
+  it("omits unchanged recurrence to preserve stored EXDATEs", async () => {
+    const user = userEvent.setup()
+    render(
+      <EventForm
+        defaultValues={recurringEvent}
+        popupTimezone="Asia/Kolkata"
+        onSuccess={vi.fn()}
+      />,
+      {
+        wrapper: Wrapper,
+      },
+    )
+    await user.click(screen.getByRole("button", { name: "Publish Event" }))
+    await waitFor(() =>
+      expect(EventsService.updateEvent).toHaveBeenCalledOnce(),
+    )
+    const body = vi.mocked(EventsService.updateEvent).mock.calls[0][0]
+      .requestBody
+    expect(body).not.toHaveProperty("recurrence")
+    expect(EventsService.setRecurrence).not.toHaveBeenCalled()
+  })
+
+  it("does not make a second mutation after a rejected atomic update", async () => {
+    vi.mocked(EventsService.updateEvent).mockRejectedValue(
+      new Error("Venue already booked"),
+    )
+    const user = userEvent.setup()
+    const onSuccess = vi.fn()
+    render(
+      <EventForm
+        defaultValues={recurringEvent}
+        popupTimezone="Asia/Kolkata"
+        onSuccess={onSuccess}
+      />,
+      {
+        wrapper: Wrapper,
+      },
+    )
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Repeats" }),
+      "none",
+    )
+    await user.click(screen.getByRole("button", { name: "Publish Event" }))
+    await waitFor(() => expect(mocks.showErrorToast).toHaveBeenCalled())
+    expect(EventsService.updateEvent).toHaveBeenCalledOnce()
+    expect(EventsService.setRecurrence).not.toHaveBeenCalled()
+    expect(onSuccess).not.toHaveBeenCalled()
   })
 })

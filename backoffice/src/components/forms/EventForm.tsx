@@ -14,11 +14,11 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import { Home, Trash2, UserSearch, Video, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
+  type EventAdminUpdate,
   type EventCreate,
   type EventPublic,
   EventSettingsService,
   EventsService,
-  type EventUpdate,
   EventVenuesService,
   type HumanPublic,
   HumansService,
@@ -282,12 +282,7 @@ export function EventForm({
   })
 
   const updateMutation = useMutation({
-    mutationFn: async (data: EventUpdate) => {
-      const updated = await EventsService.updateEvent({
-        eventId: defaultValues!.id,
-        requestBody: data,
-      })
-      // Sync recurrence changes separately (EventUpdate doesn't carry it).
+    mutationFn: (data: EventAdminUpdate) => {
       // Build with the form's current timezone; parse the stored rrule with
       // the timezone it was originally saved against so the round-trip stays
       // symmetric and doesn't spuriously detect a change when the user has
@@ -302,13 +297,15 @@ export function EventForm({
       const ruleChanged =
         JSON.stringify(currentRule) !==
         JSON.stringify(buildRecurrence(previousRule, previousTz))
-      if (ruleChanged) {
-        await EventsService.setRecurrence({
-          eventId: defaultValues!.id,
-          requestBody: { recurrence: currentRule },
-        })
-      }
-      return updated
+      // Validate and save the final schedule in one request. Omit unchanged
+      // recurrence so existing EXDATEs and legacy RRULE encodings survive.
+      return EventsService.updateEvent({
+        eventId: defaultValues!.id,
+        requestBody: {
+          ...data,
+          ...(ruleChanged ? { recurrence: currentRule } : {}),
+        },
+      })
     },
     onSuccess: () => {
       showSuccessToast("Event updated successfully")
@@ -478,7 +475,7 @@ export function EventForm({
         submitActionRef.current === "draft" ? "draft" : "published"
 
       if (isEdit) {
-        const payload: EventUpdate = {
+        const payload: EventAdminUpdate = {
           title: value.title,
           content: value.content || null,
           kind: value.kind || null,
