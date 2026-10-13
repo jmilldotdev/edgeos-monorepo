@@ -4249,7 +4249,9 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
                     Humans.id == buyer_human_id,
                     Humans.tenant_id == payment.tenant_id,
                 )
-                .with_for_update()
+                # Serialize the buyer without blocking FK key-share locks when
+                # another buyer's recipient is linked to this same human.
+                .with_for_update(key_share=True)
             ).first()
             is None
         ):
@@ -4419,6 +4421,10 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
             )
             session.add(attendee)
             session.flush()
+
+        # Resolve the recipient's identity, not the buyer's ownership. Explicit
+        # recipient snapshots, manager and existing links remain unchanged.
+        attendees_crud.link_pending_attendee_by_email(session, attendee)
 
         if recipient.attendee_id is None:
             recipient.attendee_id = attendee.id
