@@ -5,8 +5,10 @@ in a later slice (14)."). The backoffice confirm-dialog action calls this.
 """
 
 import uuid
+from io import StringIO
 
 from fastapi.testclient import TestClient
+from loguru import logger
 from sqlmodel import Session
 
 from app.api.base_field_config.crud import base_field_configs_crud
@@ -239,15 +241,26 @@ class TestCopyFormToFlowEndpoint:
         )
         db.commit()
 
-        for _ in range(2):
-            resp = client.post(
-                f"/api/v1/form-fields/copy-to-flow/{target.id}",
-                headers=_headers(admin_token_tenant_a),
-                json={"source_flow_id": str(source.id)},
-            )
-            assert resp.status_code == 200, resp.text
-            body = resp.json()
-            assert body == {"sections": 1, "base_fields": 1, "fields": 1}
+        log_stream = StringIO()
+        sink_id = logger.add(log_stream, format="{message}", level="WARNING")
+        try:
+            for _ in range(2):
+                resp = client.post(
+                    f"/api/v1/form-fields/copy-to-flow/{target.id}",
+                    headers=_headers(admin_token_tenant_a),
+                    json={"source_flow_id": str(source.id)},
+                )
+                assert resp.status_code == 200, resp.text
+                body = resp.json()
+                assert body == {"sections": 1, "base_fields": 1, "fields": 1}
+        finally:
+            logger.remove(sink_id)
+
+        log_line = log_stream.getvalue()
+        assert "form_field.copy_to_flow replacing target form" in log_line
+        assert str(source.id) in log_line
+        assert str(target.id) in log_line
+        assert "actor_user_id=" in log_line
 
         target_fields, fields_total = form_fields_crud.find_by_flow(
             db, target.id, limit=1000
