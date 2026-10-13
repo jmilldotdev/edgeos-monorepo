@@ -20,6 +20,7 @@ import {
   groupPassesBySalesFlow,
   resolvePassPurchaseFlowSlug,
 } from "@/lib/portal-sales-flows"
+import { cn } from "@/lib/utils"
 import { useApplication } from "@/providers/applicationProvider"
 import { useCityProvider } from "@/providers/cityProvider"
 import { usePassesProvider } from "@/providers/passesProvider"
@@ -286,6 +287,7 @@ export default function HomePasses() {
             <YourPasses
               attendees={section.attendees}
               inlineCta={passSections.length > 1}
+              footerSpacer={otherProducts.length === 0}
               onSwitchToBuy={section.onSwitchToBuy}
               readOnly={city.status === "ended"}
               salesFlowId={section.salesFlowId}
@@ -296,11 +298,11 @@ export default function HomePasses() {
 
         {otherProducts.length > 0 && (
           <div
-            className={
-              passSections.length > 0
-                ? "mt-10 border-t border-border pt-10"
-                : ""
-            }
+            className={cn(
+              passSections.length > 0 && "mt-10 border-t border-border pt-10",
+              // A single pass section keeps its sticky buy footer on mobile.
+              passSections.length === 1 && "pb-24 lg:pb-0",
+            )}
           >
             <OtherPurchasedProducts
               products={otherProducts}

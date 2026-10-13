@@ -88,7 +88,6 @@
     "definitive_total": "Heildarupphæð"
   },
   "orders": {
-    "show_unit_qr": "Sjá QR-kóða",
     "show_unit_qr_label": "Sjá QR-kóða fyrir {{product}}, einingu {{number}}",
     "unit_qr_title": "{{product}} · QR {{number}}",
     "unit_qr_description": "Sýndu starfsfólki þennan QR-kóða fyrir þessa vöru.",
@@ -521,6 +520,9 @@
     "other_passes": "Aðrir passar",
     "other_products": "Aðrar vörur",
     "other_products_description": "Fleiri vörur sem þú hefur keypt fyrir þennan viðburð.",
+    "other_product_position": "{{number}} af {{total}}",
+    "other_product_ready": "Tilbúið til notkunar",
+    "other_product_used": "Notað",
     "view_payment_details": "Skoða greiðsluupplýsingar",
     "companion_attending": "Þú mætir sem fylgdarmaður.",
     "companion_attending_city": "Þú mætir á {{city}} sem fylgdarmaður.",
