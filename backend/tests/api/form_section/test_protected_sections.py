@@ -1,6 +1,8 @@
 import uuid
+from io import StringIO
 
 from fastapi.testclient import TestClient
+from loguru import logger
 from sqlmodel import Session
 
 from app.api.popup.models import Popups
@@ -40,9 +42,17 @@ def test_protected_section_cannot_be_deleted_until_unprotected(
     section_id = created.json()["id"]
     assert created.json()["protected"] is True
 
-    deleted = client.delete(f"/api/v1/form-sections/{section_id}", headers=headers)
+    rejected_log_stream = StringIO()
+    rejected_sink_id = logger.add(
+        rejected_log_stream, format="{message}", level="WARNING"
+    )
+    try:
+        deleted = client.delete(f"/api/v1/form-sections/{section_id}", headers=headers)
+    finally:
+        logger.remove(rejected_sink_id)
     assert deleted.status_code == 400
     assert deleted.json()["detail"] == "Cannot delete a protected section"
+    assert "form_section.delete_rejected" in rejected_log_stream.getvalue()
 
     updated = client.patch(
         f"/api/v1/form-sections/{section_id}",
@@ -52,5 +62,14 @@ def test_protected_section_cannot_be_deleted_until_unprotected(
     assert updated.status_code == 200, updated.text
     assert updated.json()["protected"] is False
 
-    deleted = client.delete(f"/api/v1/form-sections/{section_id}", headers=headers)
+    log_stream = StringIO()
+    sink_id = logger.add(log_stream, format="{message}", level="WARNING")
+    try:
+        deleted = client.delete(f"/api/v1/form-sections/{section_id}", headers=headers)
+    finally:
+        logger.remove(sink_id)
     assert deleted.status_code == 204
+    log_line = log_stream.getvalue()
+    assert "form_section.delete" in log_line
+    assert str(popup.id) in log_line
+    assert "actor_user_id=" in log_line
