@@ -648,6 +648,9 @@ class AttendeesCRUD(BaseCRUD[Attendees, AttendeeCreate, AttendeeUpdate]):
     ) -> int:
         """Link all unlinked attendees with matching email to a Human.
 
+        Skips a popup where the Human already attends: linking a second row
+        there would give one person two attendee records.
+
         Returns the number of attendees linked.
         """
         statement = select(Attendees).where(
@@ -657,8 +660,14 @@ class AttendeesCRUD(BaseCRUD[Attendees, AttendeeCreate, AttendeeUpdate]):
         )
         attendees = session.exec(statement).all()
         count = 0
+        linked_popups: set[uuid.UUID] = set()
         for attendee in attendees:
+            if attendee.popup_id in linked_popups or self.human_attends_popup(
+                session, human_id, attendee.popup_id
+            ):
+                continue
             attendee.human_id = human_id
+            linked_popups.add(attendee.popup_id)
             session.add(attendee)
             count += 1
         if count > 0:
@@ -938,9 +947,23 @@ class AttendeesCRUD(BaseCRUD[Attendees, AttendeeCreate, AttendeeUpdate]):
         attendee: Attendees,
         update_data: AttendeeUpdate,
     ) -> Attendees:
-        """Update an attendee."""
-        # If category is being changed and attendee has products, reject
+        """Update an attendee.
+
+        An email change re-derives the row's human link, the same way
+        ``create_internal`` derives it: a companion whose email is corrected to
+        their account's address becomes that account's row, or RSVP and
+        /my/tickets never see their ticket. A link that did not come from the
+        email (someone's own application row under a different address) is
+        left alone.
+        """
         update_dict = update_data.model_dump(exclude_unset=True)
+
+        new_email = update_dict.get("email")
+        if (
+            "email" in update_dict
+            and (new_email or "").lower() != (attendee.email or "").lower()
+        ):
+            self._relink_for_email(session, attendee, new_email)
 
         for field, value in update_dict.items():
             setattr(attendee, field, value)
@@ -949,6 +972,45 @@ class AttendeesCRUD(BaseCRUD[Attendees, AttendeeCreate, AttendeeUpdate]):
         session.commit()
         session.refresh(attendee)
         return attendee
+
+    def _relink_for_email(
+        self,
+        session: Session,
+        attendee: Attendees,
+        new_email: str | None,
+    ) -> None:
+        """Point ``attendee.human_id`` at the Human owning ``new_email``.
+
+        Only touches links that were email-derived: unlinked rows, or rows
+        linked to the Human whose email was the row's old email. Raises 409
+        when the new email's Human already attends the popup, the same guard
+        as adding a companion.
+        """
+        from app.api.human.models import Humans
+
+        if attendee.human_id is not None:
+            current = session.get(Humans, attendee.human_id)
+            if (
+                current is None
+                or (current.email or "").lower() != (attendee.email or "").lower()
+            ):
+                return
+
+        new_human_id = (
+            self._find_human_id_by_email(session, new_email, attendee.tenant_id)
+            if new_email
+            else None
+        )
+        if new_human_id == attendee.human_id:
+            return
+        if new_human_id is not None and self.human_attends_popup(
+            session, new_human_id, attendee.popup_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This person is already attending this event.",
+            )
+        attendee.human_id = new_human_id
 
     def delete_attendee(
         self,

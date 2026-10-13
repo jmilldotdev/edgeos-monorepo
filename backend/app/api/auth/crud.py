@@ -439,6 +439,29 @@ async def login_human(
     return data.email, CODE_EXPIRATION_MINUTES
 
 
+def _link_attendees_by_email(session: Session, human: Humans) -> None:
+    """Attach unlinked attendee rows carrying this human's email to them.
+
+    Idempotent: only rows with no human_id are touched. Best-effort — a
+    failure here must never block authentication.
+    """
+    from app.api.attendee.crud import attendees_crud
+
+    try:
+        linked_count = attendees_crud.link_attendees_to_human(
+            session,
+            human_id=human.id,
+            email=human.email,
+            tenant_id=human.tenant_id,
+        )
+    except Exception:
+        session.rollback()
+        logger.exception("Attendee linking failed for human {}", human.id)
+        return
+    if linked_count > 0:
+        logger.info(f"Linked {linked_count} attendee(s) to human {human.id}")
+
+
 async def authenticate_human(
     session: Session,
     email: str,
@@ -530,6 +553,9 @@ async def authenticate_human(
             session.add(existing_human)
             session.commit()
 
+        # A companion row created under this email after signup (or corrected
+        # to it later) only gets linked here; signup ran long ago.
+        _link_attendees_by_email(session, existing_human)
         logger.info(f"Human authenticated successfully: {email}")
         return existing_human
 
@@ -627,17 +653,7 @@ async def authenticate_human(
         session.commit()
         session.refresh(human)
 
-    # Link any existing attendees with matching email to this new human
-    from app.api.attendee.crud import attendees_crud
-
-    linked_count = attendees_crud.link_attendees_to_human(
-        session,
-        human_id=human.id,
-        email=human.email,
-        tenant_id=human.tenant_id,
-    )
-    if linked_count > 0:
-        logger.info(f"Linked {linked_count} existing attendee(s) to new human: {email}")
+    _link_attendees_by_email(session, human)
 
     # Whitelist auto-join: if this email was whitelisted to any group (e.g. a
     # leader invited it before signup), add the new human to those groups.
