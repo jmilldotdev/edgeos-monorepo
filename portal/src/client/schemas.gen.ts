@@ -13021,6 +13021,280 @@ out of EventBase/EventPublic so it never leaks into event payloads served to
 portal humans or the public calendar.`
 } as const;
 
+export const EventAdminUpdateSchema = {
+    properties: {
+        title: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Title'
+        },
+        content: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Content'
+        },
+        start_time: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Start Time'
+        },
+        end_time: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'End Time'
+        },
+        timezone: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Timezone'
+        },
+        cover_url: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Cover Url'
+        },
+        meeting_url: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Meeting Url'
+        },
+        max_participant: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Max Participant'
+        },
+        tags: {
+            anyOf: [
+                {
+                    items: {
+                        type: 'string'
+                    },
+                    type: 'array'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Tags'
+        },
+        venue_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Venue Id'
+        },
+        custom_location_name: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Custom Location Name'
+        },
+        custom_location_url: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Custom Location Url'
+        },
+        track_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Track Id'
+        },
+        visibility: {
+            anyOf: [
+                {
+                    '$ref': '#/components/schemas/EventVisibility'
+                },
+                {
+                    type: 'null'
+                }
+            ]
+        },
+        require_approval: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Require Approval'
+        },
+        kind: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Kind'
+        },
+        host_display_name: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Host Display Name'
+        },
+        host_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Host Id'
+        },
+        collaborator_ids: {
+            anyOf: [
+                {
+                    items: {
+                        type: 'string',
+                        format: 'uuid'
+                    },
+                    type: 'array'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Collaborator Ids'
+        },
+        status: {
+            anyOf: [
+                {
+                    '$ref': '#/components/schemas/EventStatus'
+                },
+                {
+                    type: 'null'
+                }
+            ]
+        },
+        highlighted: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Highlighted'
+        },
+        group_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Group Id'
+        },
+        recurrence: {
+            anyOf: [
+                {
+                    '$ref': '#/components/schemas/RecurrenceRule'
+                },
+                {
+                    type: 'null'
+                }
+            ]
+        }
+    },
+    type: 'object',
+    title: 'EventAdminUpdate',
+    description: `Backoffice update: save schedule and recurrence atomically.
+
+Omit \`\`recurrence\`\` to preserve the stored rule and EXDATEs. Explicit
+\`\`null\`\` makes the series a one-off; a rule sets/replaces the RRULE.`
+} as const;
+
 export const EventApprovalPayloadSchema = {
     properties: {
         reason: {
@@ -17007,6 +17281,11 @@ export const FormSectionCreateSchema = {
         kind: {
             '$ref': '#/components/schemas/FormSectionKind',
             default: 'standard'
+        },
+        protected: {
+            type: 'boolean',
+            title: 'Protected',
+            default: false
         }
     },
     type: 'object',
@@ -17128,6 +17407,17 @@ export const FormSectionUpdateSchema = {
                 }
             ],
             title: 'Hidden'
+        },
+        protected: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Protected'
         }
     },
     type: 'object',

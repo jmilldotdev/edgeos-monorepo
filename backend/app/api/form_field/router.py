@@ -2,6 +2,7 @@ import uuid
 from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException, status
+from loguru import logger
 
 from app.api.base_field_config.constants import BASE_FIELD_DEFINITIONS
 from app.api.base_field_config.crud import (
@@ -25,6 +26,7 @@ from app.api.form_field.schemas import (
     FormFieldPublic,
     FormFieldUpdate,
 )
+from app.api.popup.guards import CallerToken
 from app.api.shared.enums import UserRole
 from app.api.shared.response import ListModel, PaginationLimit, PaginationSkip, Paging
 from app.api.translation.service import delete_translations_for_entity
@@ -36,6 +38,7 @@ from app.core.dependencies.users import (
     CurrentHuman,
     HumanTenantSession,
 )
+from app.core.logging import get_request_id
 
 router = APIRouter(prefix="/form-fields", tags=["form-fields"])
 
@@ -358,7 +361,8 @@ async def update_form_field(
     field_id: uuid.UUID,
     field_in: FormFieldUpdate,
     db: AdminOrApiKeySession_FormsWrite,
-    _current_user: AdminOrApiKey_FormsWrite,
+    current_user: AdminOrApiKey_FormsWrite,
+    token_payload: CallerToken,
 ) -> FormFieldPublic:
     field = crud.form_fields_crud.get(db, field_id)
 
@@ -379,6 +383,28 @@ async def update_form_field(
         ):
             field.name = crud.form_fields_crud.generate_field_name(
                 db, new_label, field.popup_id, exclude_id=field.id
+            )
+        if (
+            "section_id" in field_in.model_fields_set
+            and field_in.section_id is None
+            and field.section_id is not None
+        ):
+            logger.warning(
+                "form_field.unassign_section field_id={} field_name={!r} "
+                "popup_id={} sales_flow_id={} previous_section_id={} "
+                "actor_user_id={} actor_email={} actor_role={} via_api_key={} "
+                "api_key_id={} request_id={}",
+                field.id,
+                field.name,
+                field.popup_id,
+                field.sales_flow_id,
+                field.section_id,
+                current_user.id,
+                current_user.email,
+                current_user.role,
+                token_payload.via_api_key,
+                token_payload.api_key_id,
+                get_request_id(),
             )
         updated = crud.form_fields_crud.update(db, field, field_in)
         return _to_public(updated)
@@ -402,6 +428,29 @@ async def update_form_field(
 
         if "field_type" in field_in.model_fields_set:
             update_data["field_type"] = field_in.field_type
+
+        if (
+            "section_id" in update_data
+            and update_data["section_id"] is None
+            and base_config.section_id is not None
+        ):
+            logger.warning(
+                "base_field_config.unassign_section field_id={} field_name={!r} "
+                "popup_id={} sales_flow_id={} previous_section_id={} "
+                "actor_user_id={} actor_email={} actor_role={} via_api_key={} "
+                "api_key_id={} request_id={}",
+                base_config.id,
+                base_config.field_name,
+                base_config.popup_id,
+                base_config.sales_flow_id,
+                base_config.section_id,
+                current_user.id,
+                current_user.email,
+                current_user.role,
+                token_payload.via_api_key,
+                token_payload.api_key_id,
+                get_request_id(),
+            )
 
         ensure_base_field_update_allowed(base_config, update_data)
 
@@ -487,7 +536,8 @@ async def copy_form_to_flow(
     target_flow_id: uuid.UUID,
     body: CopyFormToFlowRequest,
     db: AdminOrApiKeySession_FormsWrite,
-    _: AdminOrApiKey_FormsWrite,
+    current_user: AdminOrApiKey_FormsWrite,
+    token_payload: CallerToken,
 ) -> CopyFormToFlowResponse:
     """Copy a form (sections + base field configs + custom fields) into
     `target_flow_id` (sdd/sales-flows task 14.1 — HTTP half of the CRUD
@@ -499,6 +549,8 @@ async def copy_form_to_flow(
     target. Omitted copies from the popup's compatibility default when one
     exists.
     """
+    from app.api.base_field_config.crud import base_field_configs_crud
+    from app.api.form_section.crud import form_sections_crud
     from app.api.sales_flow.crud import sales_flows_crud
 
     target_flow = sales_flows_crud.get(db, target_flow_id)
@@ -518,12 +570,51 @@ async def copy_form_to_flow(
             detail="Source sales flow must have the same type as the target flow",
         )
 
+    existing_sections, _ = form_sections_crud.find_by_flow(
+        db, target_flow.id, limit=None
+    )
+    existing_fields, _ = crud.form_fields_crud.find_by_flow(
+        db, target_flow.id, limit=1000
+    )
+    existing_base_fields = base_field_configs_crud.find_by_flow(db, target_flow.id)
+    logger.warning(
+        "form_field.copy_to_flow replacing target form popup_id={} "
+        "source_flow_id={} target_flow_id={} deleted_sections={} "
+        "deleted_custom_fields={} deleted_base_fields={} actor_user_id={} "
+        "actor_email={} actor_role={} via_api_key={} api_key_id={} request_id={}",
+        target_flow.popup_id,
+        source_flow.id,
+        target_flow.id,
+        len(existing_sections),
+        len(existing_fields),
+        len(existing_base_fields),
+        current_user.id,
+        current_user.email,
+        current_user.role,
+        token_payload.via_api_key,
+        token_payload.api_key_id,
+        get_request_id(),
+    )
+
     counts = crud.form_fields_crud.copy_form_to_flow(
         db,
         popup_id=target_flow.popup_id,
         tenant_id=target_flow.tenant_id,
         target_flow_id=target_flow.id,
         source_flow_id=source_flow_id,
+    )
+    logger.info(
+        "form_field.copy_to_flow completed popup_id={} source_flow_id={} "
+        "target_flow_id={} copied_sections={} copied_custom_fields={} "
+        "copied_base_fields={} actor_user_id={} request_id={}",
+        target_flow.popup_id,
+        source_flow.id,
+        target_flow.id,
+        counts["sections"],
+        counts["fields"],
+        counts["base_fields"],
+        current_user.id,
+        get_request_id(),
     )
     return CopyFormToFlowResponse(**counts)
 

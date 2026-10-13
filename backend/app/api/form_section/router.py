@@ -1,8 +1,11 @@
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
-from sqlmodel import Session, select
+from loguru import logger
+from sqlmodel import Session, func, select
 
+from app.api.base_field_config.models import BaseFieldConfigs
+from app.api.form_field.models import FormFields
 from app.api.form_section import crud
 from app.api.form_section.models import FormSections
 from app.api.form_section.schemas import (
@@ -11,6 +14,7 @@ from app.api.form_section.schemas import (
     FormSectionPublic,
     FormSectionUpdate,
 )
+from app.api.popup.guards import CallerToken
 from app.api.shared.enums import UserRole
 from app.api.shared.response import ListModel, PaginationLimit, PaginationSkip, Paging
 from app.api.translation.service import delete_translations_for_entity
@@ -20,6 +24,7 @@ from app.core.dependencies.users import (
     AdminOrApiKeySession_FormsRead,
     AdminOrApiKeySession_FormsWrite,
 )
+from app.core.logging import get_request_id
 
 router = APIRouter(prefix="/form-sections", tags=["form-sections"])
 
@@ -173,7 +178,8 @@ async def update_form_section(
     section_id: uuid.UUID,
     section_in: FormSectionUpdate,
     db: AdminOrApiKeySession_FormsWrite,
-    _current_user: AdminOrApiKey_FormsWrite,
+    current_user: AdminOrApiKey_FormsWrite,
+    token_payload: CallerToken,
 ) -> FormSectionPublic:
     section = crud.form_sections_crud.get(db, section_id)
 
@@ -181,6 +187,29 @@ async def update_form_section(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Form section not found",
+        )
+
+    if (
+        "protected" in section_in.model_fields_set
+        and section_in.protected != section.protected
+    ):
+        logger.warning(
+            "form_section.protection_changed section_id={} popup_id={} "
+            "sales_flow_id={} label={!r} previous_protected={} "
+            "protected={} actor_user_id={} actor_email={} actor_role={} "
+            "via_api_key={} api_key_id={} request_id={}",
+            section.id,
+            section.popup_id,
+            section.sales_flow_id,
+            section.label,
+            section.protected,
+            section_in.protected,
+            current_user.id,
+            current_user.email,
+            current_user.role,
+            token_payload.via_api_key,
+            token_payload.api_key_id,
+            get_request_id(),
         )
 
     updated = crud.form_sections_crud.update(db, section, section_in)
@@ -191,7 +220,8 @@ async def update_form_section(
 async def delete_form_section(
     section_id: uuid.UUID,
     db: AdminOrApiKeySession_FormsWrite,
-    _current_user: AdminOrApiKey_FormsWrite,
+    current_user: AdminOrApiKey_FormsWrite,
+    token_payload: CallerToken,
 ) -> None:
     section = crud.form_sections_crud.get(db, section_id)
 
@@ -202,10 +232,58 @@ async def delete_form_section(
         )
 
     if section.protected:
+        logger.warning(
+            "form_section.delete_rejected section_id={} popup_id={} "
+            "sales_flow_id={} label={!r} protected={} actor_user_id={} "
+            "actor_email={} actor_role={} via_api_key={} api_key_id={} "
+            "request_id={}",
+            section.id,
+            section.popup_id,
+            section.sales_flow_id,
+            section.label,
+            section.protected,
+            current_user.id,
+            current_user.email,
+            current_user.role,
+            token_payload.via_api_key,
+            token_payload.api_key_id,
+            get_request_id(),
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete a protected section",
         )
+
+    custom_field_count = db.exec(
+        select(func.count())
+        .select_from(FormFields)
+        .where(FormFields.section_id == section.id)
+    ).one()
+    base_field_count = db.exec(
+        select(func.count())
+        .select_from(BaseFieldConfigs)
+        .where(BaseFieldConfigs.section_id == section.id)
+    ).one()
+    logger.warning(
+        "form_section.delete section_id={} popup_id={} sales_flow_id={} "
+        "label={!r} kind={} protected={} custom_fields_unsectioned={} "
+        "base_fields_unsectioned={} actor_user_id={} actor_email={} "
+        "actor_role={} via_api_key={} api_key_id={} request_id={}",
+        section.id,
+        section.popup_id,
+        section.sales_flow_id,
+        section.label,
+        section.kind,
+        section.protected,
+        custom_field_count,
+        base_field_count,
+        current_user.id,
+        current_user.email,
+        current_user.role,
+        token_payload.via_api_key,
+        token_payload.api_key_id,
+        get_request_id(),
+    )
 
     delete_translations_for_entity(db, "form_section", section.id)
     crud.form_sections_crud.delete(db, section)
