@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from fastapi import HTTPException, status
+from loguru import logger
 from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload, with_loader_criteria
@@ -630,14 +631,21 @@ class AttendeesCRUD(BaseCRUD[Attendees, AttendeeCreate, AttendeeUpdate]):
         email: str,
         tenant_id: uuid.UUID,
     ) -> uuid.UUID | None:
-        """Find a Human by email and tenant_id, return their ID if found."""
+        """Resolve only an unambiguous normalized email within the tenant."""
         from app.api.human.models import Humans
 
-        statement = select(Humans.id).where(
-            func.lower(Humans.email) == email.lower(),
-            Humans.tenant_id == tenant_id,
-        )
-        return session.exec(statement).first()
+        normalized = email.strip().lower()
+        if not normalized:
+            return None
+        matches = session.exec(
+            select(Humans.id)
+            .where(
+                func.lower(func.trim(Humans.email)) == normalized,
+                Humans.tenant_id == tenant_id,
+            )
+            .limit(2)
+        ).all()
+        return matches[0] if len(matches) == 1 else None
 
     def link_attendees_to_human(
         self,
@@ -645,25 +653,151 @@ class AttendeesCRUD(BaseCRUD[Attendees, AttendeeCreate, AttendeeUpdate]):
         human_id: uuid.UUID,
         email: str,
         tenant_id: uuid.UUID,
+        *,
+        popup_id: uuid.UUID | None = None,
+        attendee_id: uuid.UUID | None = None,
+        commit: bool = True,
     ) -> int:
-        """Link all unlinked attendees with matching email to a Human.
+        """Claim unambiguous pending recipients, never transfer existing links.
 
-        Returns the number of attendees linked.
+        An application-linked main does not block its holder's pending ticket.
+        Multiple eligible pending rows or direct-sale uniqueness conflicts are
+        left for explicit reconciliation. Caller can scope writes to one row
+        while still checking every candidate in that popup. Manager, application
+        and payment lineage are untouched.
         """
+        from app.api.application.models import Applications
+        from app.api.attendee_category.models import AttendeeCategories
+
+        if self._find_human_id_by_email(session, email, tenant_id) != human_id:
+            return 0
+        owns_application = (
+            select(Applications.id)
+            .where(
+                Applications.id == Attendees.application_id,
+                Applications.tenant_id == tenant_id,
+                Applications.human_id == human_id,
+            )
+            .exists()
+        )
+        is_application_primary = (
+            select(AttendeeCategories.id)
+            .join(
+                Applications,
+                Applications.sales_flow_id == AttendeeCategories.sales_flow_id,
+            )
+            .where(
+                Applications.id == Attendees.application_id,
+                AttendeeCategories.id == Attendees.category_id,
+                AttendeeCategories.tenant_id == tenant_id,
+                AttendeeCategories.is_primary.is_(True),  # type: ignore[union-attr]
+            )
+            .exists()
+        )
         statement = select(Attendees).where(
-            func.lower(Attendees.email) == email.lower(),
+            func.lower(func.trim(Attendees.email)) == email.strip().lower(),
             Attendees.tenant_id == tenant_id,
             Attendees.human_id.is_(None),  # type: ignore[union-attr]
+            # A manager/applicant's email on a companion is contact information,
+            # not evidence of self identity. Explicit primary application rows
+            # can be repaired; self recipients are bound by checkout snapshots.
+            or_(
+                Attendees.managed_by_human_id.is_(None),  # type: ignore[union-attr]
+                Attendees.managed_by_human_id != human_id,
+            ),
+            or_(~owns_application, is_application_primary),
         )
-        attendees = session.exec(statement).all()
+        if popup_id is not None:
+            statement = statement.where(Attendees.popup_id == popup_id)
+        # Detect ambiguity before locking rows. Fulfillment may already hold
+        # its own recipient lock; locking every matching row could deadlock
+        # two concurrent reconciliations of ambiguous recipients.
+        candidates = session.exec(statement.order_by(Attendees.id)).all()
+        by_popup: dict[uuid.UUID, list[Attendees]] = {}
+        for candidate in candidates:
+            by_popup.setdefault(candidate.popup_id, []).append(candidate)
+
         count = 0
-        for attendee in attendees:
-            attendee.human_id = human_id
-            session.add(attendee)
+        for candidate_popup, rows in by_popup.items():
+            if len(rows) != 1:
+                logger.warning(
+                    "Pending attendee link is ambiguous for human {} popup {}",
+                    human_id,
+                    candidate_popup,
+                )
+                continue
+            candidate = rows[0]
+            if attendee_id is not None and candidate.id != attendee_id:
+                continue
+            # Recheck the email and pending state after acquiring this row's
+            # lock, so a concurrent contact edit/explicit link cannot be stolen.
+            candidate = session.exec(
+                statement.where(Attendees.id == candidate.id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            ).first()
+            if candidate is None:
+                continue
+            if candidate.application_id is None:
+                existing_direct = session.exec(
+                    select(Attendees.id).where(
+                        Attendees.tenant_id == tenant_id,
+                        Attendees.popup_id == candidate_popup,
+                        Attendees.human_id == human_id,
+                        Attendees.application_id.is_(None),  # type: ignore[union-attr]
+                    )
+                ).first()
+                if existing_direct is not None:
+                    logger.warning(
+                        "Pending attendee link conflicts with direct attendee {}",
+                        existing_direct,
+                    )
+                    continue
+            try:
+                with session.begin_nested():
+                    candidate.human_id = human_id
+                    session.add(candidate)
+                    session.flush()
+            except IntegrityError as exc:
+                # Another transaction may have linked/created a direct row after
+                # the check. Keep the payment/login usable without claiming it.
+                constraint = getattr(
+                    getattr(exc.orig, "diag", None), "constraint_name", None
+                )
+                if constraint != "ux_attendees_human_popup_direct":
+                    raise
+                logger.warning(
+                    "Concurrent direct attendee link conflict for human {}", human_id
+                )
+                continue
             count += 1
-        if count > 0:
+        if count > 0 and commit:
             session.commit()
         return count
+
+    def link_pending_attendee_by_email(
+        self, session: Session, attendee: Attendees
+    ) -> bool:
+        """Flush-only recipient resolution for email edits and fulfillment."""
+        if attendee.human_id is not None or not attendee.email:
+            return False
+        human_id = self._find_human_id_by_email(
+            session, attendee.email, attendee.tenant_id
+        )
+        if human_id is None:
+            return False
+        return (
+            self.link_attendees_to_human(
+                session,
+                human_id,
+                attendee.email,
+                attendee.tenant_id,
+                popup_id=attendee.popup_id,
+                attendee_id=attendee.id,
+                commit=False,
+            )
+            > 0
+        )
 
     def find_by_human(
         self,
@@ -938,14 +1072,16 @@ class AttendeesCRUD(BaseCRUD[Attendees, AttendeeCreate, AttendeeUpdate]):
         attendee: Attendees,
         update_data: AttendeeUpdate,
     ) -> Attendees:
-        """Update an attendee."""
-        # If category is being changed and attendee has products, reject
+        """Edit contact data; only pending identity links can be established."""
         update_dict = update_data.model_dump(exclude_unset=True)
 
         for field, value in update_dict.items():
             setattr(attendee, field, value)
 
         session.add(attendee)
+        if "email" in update_dict and attendee.human_id is None:
+            session.flush()
+            self.link_pending_attendee_by_email(session, attendee)
         session.commit()
         session.refresh(attendee)
         return attendee
