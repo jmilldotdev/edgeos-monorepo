@@ -15,10 +15,10 @@ import { OtherPurchasedProducts } from "./OtherPurchasedProducts"
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options: Record<string, unknown> = {}) => {
-      const label =
-        en.orders[key.replace("orders.", "") as keyof typeof en.orders]
-      return String(label ?? key).replace(/{{(\w+)}}/g, (_, name) =>
-        String(options[name] ?? ""),
+      const [namespace, name] = key.split(".") as ["orders" | "passes", string]
+      const label = (en[namespace] as unknown as Record<string, string>)[name]
+      return String(label ?? key).replace(/{{(\w+)}}/g, (_, option) =>
+        String(options[option] ?? ""),
       )
     },
     i18n: { language: "en" },
@@ -42,20 +42,25 @@ vi.mock("@/lib/qr-download", () => ({
   downloadQrPng: vi.fn(async () => {}),
 }))
 
-const product = (
+const shirt = (
   overrides: Partial<OtherPurchasedProduct> = {},
 ): OtherPurchasedProduct => ({
+  key: "unit-1",
   id: "shirt",
   name: "Conference T-Shirt",
-  quantity: 2,
   category: "merch",
   salesFlowId: "merch-flow",
-  scannableUnits: [
-    { id: "unit-1", checkInCode: "SHIRT1" },
-    { id: "unit-2", checkInCode: "SHIRT2" },
-  ],
+  checkInCode: "SHIRT1",
+  lastScanAt: null,
+  number: 1,
+  total: 2,
   ...overrides,
 })
+
+const twoShirts = [
+  shirt(),
+  shirt({ key: "unit-2", checkInCode: "SHIRT2", number: 2 }),
+]
 
 function renderProducts(products: OtherPurchasedProduct[]) {
   const queryClient = new QueryClient({
@@ -75,12 +80,16 @@ function renderProducts(products: OtherPurchasedProduct[]) {
 
 afterEach(cleanup)
 
-describe("OtherPurchasedProducts QR", () => {
-  it("opens each unit's own QR", () => {
-    renderProducts([product()])
+describe("OtherPurchasedProducts", () => {
+  it("gives each unit its own row and opens that unit's QR", () => {
+    renderProducts(twoShirts)
 
-    const buttons = screen.getAllByRole("button", { name: /View QR for/ })
-    expect(buttons).toHaveLength(2)
+    const rows = screen.getAllByRole("listitem")
+    expect(rows).toHaveLength(2)
+    expect(within(rows[0]).getByText("1 of 2")).toBeTruthy()
+    expect(within(rows[1]).getByText("2 of 2")).toBeTruthy()
+    expect(screen.getAllByText("Ready to use")).toHaveLength(2)
+    expect(screen.queryByText(/×/)).toBeNull()
 
     fireEvent.click(
       screen.getByRole("button", {
@@ -95,15 +104,36 @@ describe("OtherPurchasedProducts QR", () => {
     )
   })
 
-  it("shows no QR for products without scannable units", () => {
-    renderProducts([product({ name: "testlunch", scannableUnits: [] })])
+  it("marks used units and warns when their QR is opened again", () => {
+    renderProducts([
+      shirt({
+        total: 1,
+        lastScanAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+      }),
+    ])
+
+    expect(screen.getByText("Used")).toBeTruthy()
+    expect(screen.getByText("2 hours ago")).toBeTruthy()
+    expect(screen.queryByText("Ready to use")).toBeNull()
+    expect(screen.queryByText(/of 1/)).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: /View QR for/ }))
+
+    const dialog = screen.getByRole("dialog")
+    expect(within(dialog).getByText("Conference T-Shirt")).toBeTruthy()
+    expect(within(dialog).getByText(/QR already scanned/)).toBeTruthy()
+  })
+
+  it("shows products without a QR as plain rows", () => {
+    renderProducts([shirt({ name: "testlunch", checkInCode: null, total: 1 })])
 
     expect(screen.getByText("testlunch")).toBeTruthy()
     expect(screen.queryByRole("button", { name: /View QR for/ })).toBeNull()
+    expect(screen.queryByText("Ready to use")).toBeNull()
   })
 
   it("closes the QR when its unit disappears on refetch", () => {
-    const { rerender } = renderProducts([product()])
+    const { rerender } = renderProducts(twoShirts)
     fireEvent.click(
       screen.getByRole("button", {
         name: "View QR for Conference T-Shirt, unit 1",
@@ -113,7 +143,7 @@ describe("OtherPurchasedProducts QR", () => {
 
     rerender(
       <OtherPurchasedProducts
-        products={[product({ scannableUnits: [] })]}
+        products={[twoShirts[1]]}
         paymentsHref="/portal/demo/orders"
       />,
     )

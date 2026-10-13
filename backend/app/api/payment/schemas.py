@@ -354,6 +354,8 @@ class PaymentProductUnitResponse(BaseModel):
     check_in_code: str
     active: bool
     requires_check_in: bool
+    # Most recent check-in scan of this unit; None when never scanned.
+    last_scan_at: datetime | None = None
 
 
 class PaymentProductResponse(BaseModel):

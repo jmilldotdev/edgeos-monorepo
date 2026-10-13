@@ -22902,6 +22902,18 @@ export const PaymentProductUnitResponseSchema = {
         requires_check_in: {
             type: 'boolean',
             title: 'Requires Check In'
+        },
+        last_scan_at: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Scan At'
         }
     },
     type: 'object',

@@ -22,6 +22,9 @@ interface TicketSelectSectionConfig {
 interface YourPassesProps {
   attendees?: AttendeePassState[]
   inlineCta?: boolean
+  /** Room under the section for the mobile sticky footer. Off when more
+   *  content follows, so that content pads the page end instead. */
+  footerSpacer?: boolean
   onSwitchToBuy?: (attendee?: AttendeePassState) => void
   readOnly?: boolean
   salesFlowId: string | null
@@ -31,6 +34,7 @@ interface YourPassesProps {
 const YourPasses = ({
   attendees: attendeeSubset,
   inlineCta = false,
+  footerSpacer = true,
   onSwitchToBuy,
   readOnly = false,
   salesFlowId,
@@ -118,7 +122,7 @@ const YourPasses = ({
   return (
     <section
       aria-labelledby={sectionHeadingId}
-      className={`space-y-6 ${inlineCta ? "" : "pb-24 lg:pb-0"}`}
+      className={`space-y-6 ${inlineCta || !footerSpacer ? "" : "pb-24 lg:pb-0"}`}
     >
       {sectionTitle && (
         <h2
