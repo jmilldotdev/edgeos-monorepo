@@ -17281,6 +17281,11 @@ export const FormSectionCreateSchema = {
         kind: {
             '$ref': '#/components/schemas/FormSectionKind',
             default: 'standard'
+        },
+        protected: {
+            type: 'boolean',
+            title: 'Protected',
+            default: false
         }
     },
     type: 'object',
@@ -17402,6 +17407,17 @@ export const FormSectionUpdateSchema = {
                 }
             ],
             title: 'Hidden'
+        },
+        protected: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Protected'
         }
     },
     type: 'object',
