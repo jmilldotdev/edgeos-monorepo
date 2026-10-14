@@ -119,6 +119,20 @@ class ApplicationAcceptedScholarshipRejectedContext(BaseModel):
     passes_url: str | None = None
 
 
+class CheckInQrItem(BaseModel):
+    """A single check-in QR entry for the check-in pass and payment emails.
+
+    One per scannable unit (``AttendeeProducts`` row where the product has
+    ``requires_check_in``). ``qr_url`` points at the hosted PNG; it may be
+    ``None`` if storage is unavailable when the email is built.
+    """
+
+    attendee_name: str
+    product_name: str
+    check_in_code: str
+    qr_url: str | None = None
+
+
 class PaymentProductItem(BaseModel):
     """Product item for payment email templates."""
 
@@ -152,6 +166,9 @@ class PaymentConfirmedContext(BaseModel):
     attendees: list[PaymentAttendeeItem] | None = None
     order_summary: str | None = None
     portal_url: str | None = None
+    # One entry per scannable non-ticket unit bought in this payment (merch,
+    # parking...). Tickets keep their QR for the scheduled check-in pass.
+    checkin_qrs: list[CheckInQrItem] | None = None
 
 
 class AbandonedCartContext(BaseModel):
@@ -306,20 +323,6 @@ class EventApprovalRejectedContext(BaseModel):
     event_when: str = ""
     venue_title: str = ""
     reason: str = ""
-
-
-class CheckInQrItem(BaseModel):
-    """A single check-in QR entry for the check-in pass email.
-
-    One per scannable ticket (``AttendeeProducts`` row where the product has
-    ``requires_check_in``). ``qr_url`` points at the hosted PNG; it may be
-    ``None`` if storage is unavailable when the email is built.
-    """
-
-    attendee_name: str
-    product_name: str
-    check_in_code: str
-    qr_url: str | None = None
 
 
 class CheckInPassContext(BaseModel):
@@ -1016,6 +1019,18 @@ POPUP_TEMPLATE_METADATA: list[dict[str, Any]] = [
                 "description": "Link to the attendee portal",
                 "required": False,
                 "group": "General",
+            },
+            {
+                "name": "checkin_qrs",
+                "label": "Product QR codes",
+                "type": "array",
+                "description": (
+                    "One entry per purchased product that requires check-in "
+                    "(tickets excluded), each with attendee_name, "
+                    "product_name, check_in_code and qr_url. Loop over this."
+                ),
+                "required": False,
+                "group": "Check-in",
             },
             *_POPUP_EVENT_VARIABLES,
         ],
