@@ -82,6 +82,30 @@
 </div>
 {% endif %}
 
+{% if checkin_qrs %}
+<div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
+    <h2 style="margin-top: 0;">Your QR {% if checkin_qrs|length > 1 %}codes{% else %}code{% endif %}</h2>
+    <p style="margin: 0 0 8px; color: #666;">
+        Show {% if checkin_qrs|length > 1 %}these codes{% else %}this code{% endif %}
+        at the desk to pick up what you bought. You can also find
+        {% if checkin_qrs|length > 1 %}them{% else %}it{% endif %} anytime under Purchases in the portal.
+    </p>
+    {% for qr in checkin_qrs %}
+    <div style="text-align: center; padding: 20px 0; {% if not loop.last %}border-bottom: 1px solid #dee2e6;{% endif %}">
+        <div style="font-size: 16px; font-weight: 600; color: #333;">{{ qr.product_name }}</div>
+        <div style="font-size: 14px; color: #666; margin-bottom: 12px;">{{ qr.attendee_name }}</div>
+        {% if qr.qr_url %}
+        <div style="display: inline-block; background-color: #ffffff; padding: 12px; border-radius: 8px; border: 1px solid #dee2e6;">
+            <img src="{{ qr.qr_url }}" alt="QR code for {{ qr.product_name }}" width="180" height="180" style="display: block; width: 180px; height: 180px;">
+        </div>
+        {% endif %}
+        <div style="margin-top: 12px; font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 1px;">Code</div>
+        <div style="font-family: monospace; font-size: 16px; letter-spacing: 1px; color: #333;">{{ qr.check_in_code }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <div class="spacer"></div>
 
 <p style="background-color: #e7f3ff; border-left: 4px solid #007bff; padding: 15px; margin: 20px 0;">
