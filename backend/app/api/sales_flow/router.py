@@ -506,7 +506,7 @@ def _ensure_scholarship_section(db: Session, flow: SalesFlows) -> None:
 async def delete_sales_flow(
     flow_id: uuid.UUID,
     db: TenantSession,
-    _current_user: CurrentWriter,
+    current_user: CurrentWriter,
 ) -> None:
     """Delete an unused sales flow and its owned configuration (BO only)."""
     flow = crud.sales_flows_crud.get(db, flow_id)
@@ -537,6 +537,36 @@ async def delete_sales_flow(
                 + "."
             ),
         )
+
+    from app.api.audit_log.actor import actor_from_user
+    from app.api.audit_log.constants import AuditAction, AuditEntityType
+    from app.api.audit_log.crud import audit_logs_crud
+    from app.api.base_field_config.crud import base_field_configs_crud
+    from app.api.form_field.crud import form_fields_crud
+    from app.api.form_section.crud import form_sections_crud
+
+    sections, _ = form_sections_crud.find_by_flow(db, flow.id, limit=None)
+    fields, _ = form_fields_crud.find_by_flow(db, flow.id, limit=1000)
+    base_fields = base_field_configs_crud.find_by_flow(db, flow.id)
+    audit_logs_crud.record(
+        db,
+        tenant_id=flow.tenant_id,
+        actor=actor_from_user(current_user),
+        action=AuditAction.SALES_FLOW_DELETED,
+        entity_type=AuditEntityType.SALES_FLOW,
+        entity_id=flow.id,
+        entity_label=flow.name,
+        popup_id=flow.popup_id,
+        details={
+            "slug": flow.slug,
+            "type": flow.type,
+            "deleted_configuration": {
+                "sections": len(sections),
+                "custom_fields": len(fields),
+                "base_fields": len(base_fields),
+            },
+        },
+    )
 
     try:
         crud.delete_flow_and_its_configuration(db, flow)

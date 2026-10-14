@@ -8,9 +8,11 @@ Both PATCH routes must enforce the catalog invariants identically:
 import uuid
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
+from app.api.audit_log.models import AuditLog
 from app.api.base_field_config.models import BaseFieldConfigs
+from app.api.form_section.models import FormSections
 from app.api.popup.models import Popups
 from app.api.tenant.models import Tenants
 from tests._flow_helpers import default_flow_id, provision_default_flow
@@ -61,6 +63,55 @@ def _make_config(
 
 
 class TestBaseFieldConfigPatchGuards:
+    def test_section_reassignment_is_audited(
+        self,
+        client: TestClient,
+        db: Session,
+        tenant_a: Tenants,
+        admin_token_tenant_a: str,
+    ) -> None:
+        popup = _make_popup(db, tenant_a)
+        flow_id = default_flow_id(db, popup.id)
+        original_section = FormSections(
+            tenant_id=tenant_a.id,
+            popup_id=popup.id,
+            sales_flow_id=flow_id,
+            label="Personal Information",
+        )
+        next_section = FormSections(
+            tenant_id=tenant_a.id,
+            popup_id=popup.id,
+            sales_flow_id=flow_id,
+            label="Professional Details",
+        )
+        db.add(original_section)
+        db.add(next_section)
+        db.commit()
+        config = _make_config(db, popup, "residence")
+        config.section_id = original_section.id
+        db.add(config)
+        db.commit()
+
+        resp = client.patch(
+            f"/api/v1/base-field-configs/{config.id}",
+            headers=_admin_headers(admin_token_tenant_a),
+            json={"section_id": str(next_section.id)},
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["section_id"] == str(next_section.id)
+
+        audit = db.exec(
+            select(AuditLog).where(
+                AuditLog.action == "form_field.section_changed",
+                AuditLog.entity_id == config.id,
+            )
+        ).one()
+        assert audit.entity_type == "base_field_config"
+        assert audit.request_id
+        assert audit.details is not None
+        assert audit.details["previous_section_id"] == str(original_section.id)
+        assert audit.details["section_id"] == str(next_section.id)
+
     def test_non_removable_field_cannot_be_made_optional(
         self,
         client: TestClient,
