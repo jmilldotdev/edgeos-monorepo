@@ -406,6 +406,42 @@ async def update_form_field(
                 token_payload.api_key_id,
                 get_request_id(),
             )
+        if (
+            "section_id" in field_in.model_fields_set
+            and field.section_id != field_in.section_id
+        ):
+            from app.api.audit_log.actor import actor_from_user_or_api_key
+            from app.api.audit_log.constants import AuditAction, AuditEntityType
+            from app.api.audit_log.crud import audit_logs_crud
+
+            old_section_id = field.section_id
+            audit_logs_crud.record(
+                db,
+                tenant_id=field.tenant_id,
+                actor=actor_from_user_or_api_key(
+                    current_user, api_key_id=token_payload.api_key_id
+                ),
+                action=AuditAction.FORM_FIELD_SECTION_CHANGED,
+                entity_type=AuditEntityType.FORM_FIELD,
+                entity_id=field.id,
+                entity_label=field.name,
+                popup_id=field.popup_id,
+                details={
+                    "sales_flow_id": str(field.sales_flow_id),
+                    "field_kind": "custom",
+                    "field_name": field.name,
+                    "previous_section_id": (
+                        str(old_section_id) if old_section_id else None
+                    ),
+                    "section_id": (
+                        str(field_in.section_id) if field_in.section_id else None
+                    ),
+                    "auth": {
+                        "via_api_key": token_payload.via_api_key,
+                        "api_key_id": token_payload.api_key_id,
+                    },
+                },
+            )
         updated = crud.form_fields_crud.update(db, field, field_in)
         return _to_public(updated)
 
@@ -450,6 +486,42 @@ async def update_form_field(
                 token_payload.via_api_key,
                 token_payload.api_key_id,
                 get_request_id(),
+            )
+
+        if (
+            "section_id" in update_data
+            and base_config.section_id != update_data["section_id"]
+        ):
+            from app.api.audit_log.actor import actor_from_user_or_api_key
+            from app.api.audit_log.constants import AuditAction, AuditEntityType
+            from app.api.audit_log.crud import audit_logs_crud
+
+            new_section_id = update_data["section_id"]
+            old_section_id = base_config.section_id
+            audit_logs_crud.record(
+                db,
+                tenant_id=base_config.tenant_id,
+                actor=actor_from_user_or_api_key(
+                    current_user, api_key_id=token_payload.api_key_id
+                ),
+                action=AuditAction.FORM_FIELD_SECTION_CHANGED,
+                entity_type=AuditEntityType.BASE_FIELD_CONFIG,
+                entity_id=base_config.id,
+                entity_label=base_config.field_name,
+                popup_id=base_config.popup_id,
+                details={
+                    "sales_flow_id": str(base_config.sales_flow_id),
+                    "field_kind": "base",
+                    "field_name": base_config.field_name,
+                    "previous_section_id": (
+                        str(old_section_id) if old_section_id else None
+                    ),
+                    "section_id": str(new_section_id) if new_section_id else None,
+                    "auth": {
+                        "via_api_key": token_payload.via_api_key,
+                        "api_key_id": token_payload.api_key_id,
+                    },
+                },
             )
 
         ensure_base_field_update_allowed(base_config, update_data)
@@ -577,6 +649,11 @@ async def copy_form_to_flow(
         db, target_flow.id, limit=1000
     )
     existing_base_fields = base_field_configs_crud.find_by_flow(db, target_flow.id)
+    source_sections, _ = form_sections_crud.find_by_flow(db, source_flow.id, limit=None)
+    source_fields, _ = crud.form_fields_crud.find_by_flow(
+        db, source_flow.id, limit=1000
+    )
+    source_base_fields = base_field_configs_crud.find_by_flow(db, source_flow.id)
     logger.warning(
         "form_field.copy_to_flow replacing target form popup_id={} "
         "source_flow_id={} target_flow_id={} deleted_sections={} "
@@ -594,6 +671,41 @@ async def copy_form_to_flow(
         token_payload.via_api_key,
         token_payload.api_key_id,
         get_request_id(),
+    )
+
+    from app.api.audit_log.actor import actor_from_user_or_api_key
+    from app.api.audit_log.constants import AuditAction, AuditEntityType
+    from app.api.audit_log.crud import audit_logs_crud
+
+    audit_logs_crud.record(
+        db,
+        tenant_id=target_flow.tenant_id,
+        actor=actor_from_user_or_api_key(
+            current_user, api_key_id=token_payload.api_key_id
+        ),
+        action=AuditAction.FORM_COPIED_TO_FLOW,
+        entity_type=AuditEntityType.SALES_FLOW,
+        entity_id=target_flow.id,
+        entity_label=target_flow.name,
+        popup_id=target_flow.popup_id,
+        details={
+            "source_flow_id": str(source_flow.id),
+            "target_flow_id": str(target_flow.id),
+            "replaced": {
+                "sections": len(existing_sections),
+                "custom_fields": len(existing_fields),
+                "base_fields": len(existing_base_fields),
+            },
+            "copied": {
+                "sections": len(source_sections),
+                "custom_fields": len(source_fields),
+                "base_fields": len(source_base_fields),
+            },
+            "auth": {
+                "via_api_key": token_payload.via_api_key,
+                "api_key_id": token_payload.api_key_id,
+            },
+        },
     )
 
     counts = crud.form_fields_crud.copy_form_to_flow(

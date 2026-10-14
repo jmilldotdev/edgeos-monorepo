@@ -9,8 +9,9 @@ from io import StringIO
 
 from fastapi.testclient import TestClient
 from loguru import logger
-from sqlmodel import Session
+from sqlmodel import Session, select
 
+from app.api.audit_log.models import AuditLog
 from app.api.base_field_config.crud import base_field_configs_crud
 from app.api.base_field_config.models import BaseFieldConfigs
 from app.api.form_field.crud import form_fields_crud
@@ -268,9 +269,52 @@ class TestCopyFormToFlowEndpoint:
         assert fields_total == 1
         assert target_fields[0].name == "favorite_color"
 
+        previous_section_id = target_fields[0].section_id
+        unassigned = client.patch(
+            f"/api/v1/form-fields/{target_fields[0].id}",
+            headers=_headers(admin_token_tenant_a),
+            json={"section_id": None},
+        )
+        assert unassigned.status_code == 200, unassigned.text
+        assert unassigned.json()["section_id"] is None
+
         target_configs = base_field_configs_crud.find_by_flow(db, target.id)
         assert len(target_configs) == 1
         assert target_configs[0].field_name == "phone"
+
+        audit_rows = db.exec(
+            select(AuditLog).where(
+                AuditLog.action == "form.copied_to_flow",
+                AuditLog.entity_id == target.id,
+            )
+        ).all()
+        assert len(audit_rows) == 2
+        assert all(row.request_id for row in audit_rows)
+        assert all(
+            row.details["source_flow_id"] == str(source.id) for row in audit_rows
+        )
+        assert sorted(row.details["replaced"]["sections"] for row in audit_rows) == [
+            0,
+            1,
+        ]
+        assert sorted(row.details["replaced"]["base_fields"] for row in audit_rows) == [
+            0,
+            1,
+        ]
+        assert all(row.details["replaced"]["custom_fields"] == 1 for row in audit_rows)
+        assert all(row.details["copied"]["sections"] == 1 for row in audit_rows)
+
+        unassignment_log = db.exec(
+            select(AuditLog).where(
+                AuditLog.action == "form_field.section_changed",
+                AuditLog.entity_id == target_fields[0].id,
+            )
+        ).one()
+        assert unassignment_log.details is not None
+        assert unassignment_log.details["previous_section_id"] == str(
+            previous_section_id
+        )
+        assert unassignment_log.details["section_id"] is None
 
         target_sections, sections_total = form_sections_crud.find_by_flow(
             db, target.id, limit=None

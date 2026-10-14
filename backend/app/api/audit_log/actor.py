@@ -56,6 +56,27 @@ def actor_from_user(current_user: UserPublic) -> AuditActor:
     )
 
 
+def actor_from_user_or_api_key(
+    current_user: UserPublic, *, api_key_id: str | None = None
+) -> AuditActor:
+    """Preserve the API key identity while retaining its owning-user snapshot."""
+    if api_key_id:
+        try:
+            key_id = uuid.UUID(api_key_id)
+        except ValueError:
+            key_id = None
+        if key_id is not None:
+            return AuditActor(
+                type=AuditActorType.API_KEY,
+                source=AuditSource.BACKOFFICE,
+                id=key_id,
+                email=getattr(current_user, "email", None),
+                name=getattr(current_user, "full_name", None)
+                or getattr(current_user, "email", None),
+            )
+    return actor_from_user(current_user)
+
+
 def actor_from_system() -> AuditActor:
     """Build an actor for background/system operations (no request user)."""
     return AuditActor(
