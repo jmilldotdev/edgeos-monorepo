@@ -37,6 +37,17 @@ const EVENT_ACTION_VERBS: Record<string, string> = {
   "event.unhidden": "Unhid event",
 }
 
+const FORM_ACTION_VERBS: Record<string, string> = {
+  "form_section.created": "Created form section",
+  "form_section.updated": "Updated form section",
+  "form_section.deleted": "Deleted form section",
+  "form_section.delete_rejected": "Attempted to delete protected section",
+  "form_field.section_changed": "Changed form field section",
+  "form.copied_to_flow": "Replaced form in sales flow",
+  "sales_flow.deleted": "Deleted sales flow and its form",
+  "popup.deleted": "Deleted popup and its form",
+}
+
 /**
  * Render a readable English sentence for an audit entry from its action +
  * structured details. Falls back to the raw action for unknown event types so
@@ -59,7 +70,8 @@ export function describeAuditAction(log: AuditLogPublic): string {
       return names ? `Granted ${names}` : "Granted tickets"
     }
     default: {
-      const eventVerb = EVENT_ACTION_VERBS[log.action]
+      const eventVerb =
+        EVENT_ACTION_VERBS[log.action] ?? FORM_ACTION_VERBS[log.action]
       if (eventVerb) {
         const title = log.entity_label ? ` "${log.entity_label}"` : ""
         // For updates, summarize how much changed (the full diff is in the
@@ -98,4 +110,15 @@ export const AUDIT_ACTION_OPTIONS: { value: string; label: string }[] = [
   { value: "event.cancelled", label: "Event cancelled" },
   { value: "event.approved", label: "Event approved" },
   { value: "event.rejected", label: "Event rejected" },
+  { value: "form_section.created", label: "Form section created" },
+  { value: "form_section.updated", label: "Form section updated" },
+  { value: "form_section.deleted", label: "Form section deleted" },
+  {
+    value: "form_section.delete_rejected",
+    label: "Protected section delete attempted",
+  },
+  { value: "form_field.section_changed", label: "Form field section changed" },
+  { value: "form.copied_to_flow", label: "Form copied to sales flow" },
+  { value: "sales_flow.deleted", label: "Sales flow deleted" },
+  { value: "popup.deleted", label: "Popup deleted" },
 ]

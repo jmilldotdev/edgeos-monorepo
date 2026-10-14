@@ -509,7 +509,7 @@ async def update_popup(
 async def delete_popup(
     popup_id: uuid.UUID,
     db: TenantSession,
-    _current_user: CurrentOperatorJwtOnly,
+    current_user: CurrentOperatorJwtOnly,
 ) -> None:
     popup = crud.get(db, popup_id)
 
@@ -518,6 +518,26 @@ async def delete_popup(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Popup not found",
         )
+
+    from app.api.audit_log.actor import actor_from_user
+    from app.api.audit_log.constants import AuditAction, AuditEntityType
+    from app.api.audit_log.crud import audit_logs_crud
+
+    audit_logs_crud.record(
+        db,
+        tenant_id=popup.tenant_id,
+        actor=actor_from_user(current_user),
+        action=AuditAction.POPUP_DELETED,
+        entity_type=AuditEntityType.POPUP,
+        entity_id=popup.id,
+        entity_label=popup.name,
+        popup_id=popup.id,
+        details={
+            "form_sections_deleted": len(popup.form_sections),
+            "custom_fields_deleted": len(popup.form_fields),
+            "base_fields_deleted": len(popup.base_field_configs),
+        },
+    )
 
     # Clean up translations for the popup and its child entities
     for field in popup.form_fields:
