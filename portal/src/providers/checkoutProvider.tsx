@@ -237,6 +237,7 @@ interface CheckoutContextValue {
     qty: number,
   ) => void
   buyerFormSchema: ApplicationFormSchema | null
+  buyerFormDisplaySchema?: ApplicationFormSchema | null
   /** What the checkout already knows about the buyer, so the accommodation
    *  step neither asks for it nor gates on it. */
   buyerIdentity: BuyerIdentity
@@ -327,6 +328,7 @@ interface CheckoutProviderProps {
   submitPopupSlug?: string | null
   returnContext?: "direct" | "portal"
   buyerFormSchema?: ApplicationFormSchema | null
+  buyerFormDisplaySchema?: ApplicationFormSchema | null
   initialBuyerValues?: Record<string, unknown>
   cartPersistenceEnabled?: boolean
   cartUiEnabled?: boolean
@@ -363,6 +365,7 @@ export function CheckoutProvider({
   submitPopupSlug = null,
   returnContext = "direct",
   buyerFormSchema = null,
+  buyerFormDisplaySchema = buyerFormSchema,
   initialBuyerValues = {},
   cartPersistenceEnabled = true,
   cartUiEnabled = true,
@@ -415,6 +418,16 @@ export function CheckoutProvider({
   const pendingReleaseSettledRef = useRef(false)
   const [buyerValues, setBuyerValues] =
     useState<Record<string, unknown>>(initialBuyerValues)
+  // Session identity can arrive after the runtime; keep custom answers intact.
+  useEffect(() => {
+    const entries = Object.entries(initialBuyerValues)
+    if (!entries.length) return
+    setBuyerValues((current) => {
+      if (entries.every(([key, value]) => current[key] === value))
+        return current
+      return { ...current, ...initialBuyerValues }
+    })
+  }, [initialBuyerValues])
   const [buyerErrors, setBuyerErrors] = useState<Record<string, string>>({})
   const [buyerGeneralError, setBuyerGeneralError] = useState<string | null>(
     null,
@@ -1796,6 +1809,7 @@ export function CheckoutProvider({
     removeDynamicItem,
     updateDynamicQuantity,
     buyerFormSchema,
+    buyerFormDisplaySchema,
     buyerIdentity,
     buyerValues,
     buyerErrors,

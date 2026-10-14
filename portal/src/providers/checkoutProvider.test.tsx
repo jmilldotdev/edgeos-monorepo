@@ -201,6 +201,47 @@ function makeWrapper(
   }
 }
 
+describe("checkoutProvider session identity", () => {
+  it("merges late session data without losing custom answers or payment identity", () => {
+    const props: Partial<ComponentProps<typeof CheckoutProvider>> = {
+      submitMode: "open-ticketing",
+      initialBuyerValues: {},
+      buyerFormDisplaySchema: {
+        base_fields: {},
+        custom_fields: {},
+        sections: [],
+      },
+    }
+    const { result, rerender } = renderHook(() => useCheckout(), {
+      wrapper: makeWrapper([], [], props),
+    })
+    act(() => result.current.setBuyerField("custom_location", "Test location"))
+    props.initialBuyerValues = {
+      email: "buyer@example.com",
+      first_name: "Test",
+      last_name: "Buyer",
+    }
+    rerender()
+    expect(result.current.buyerValues).toEqual({
+      ...props.initialBuyerValues,
+      custom_location: "Test location",
+    })
+    expect(result.current.buyerFormDisplaySchema?.base_fields).toEqual({})
+    expect(paymentSubmitSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        buyerData: expect.objectContaining({
+          email: "buyer@example.com",
+          firstName: "Test",
+          lastName: "Buyer",
+          formData: expect.objectContaining({
+            custom_location: "Test location",
+          }),
+        }),
+      }),
+    )
+  })
+})
+
 describe("checkoutProvider override loading", () => {
   it.each([false, true])("uses supplied sources: nonempty=%s", (nonempty) => {
     cityState.current = { id: "popup-1" }
