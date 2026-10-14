@@ -439,6 +439,28 @@ async def login_human(
     return data.email, CODE_EXPIRATION_MINUTES
 
 
+def _link_pending_attendees_after_auth(session: Session, human: Humans) -> None:
+    """Best-effort repair after email verification, isolated from authentication."""
+    from app.api.attendee.crud import attendees_crud
+
+    human_id = human.id
+    try:
+        with session.begin_nested():
+            linked = attendees_crud.link_attendees_to_human(
+                session,
+                human_id=human_id,
+                email=human.email,
+                tenant_id=human.tenant_id,
+                commit=False,
+            )
+        session.commit()
+        if linked:
+            logger.info("Linked {} pending attendee(s) to human {}", linked, human_id)
+    except Exception:
+        session.rollback()
+        logger.exception("Pending attendee resolution failed for human {}", human_id)
+
+
 async def authenticate_human(
     session: Session,
     email: str,
@@ -530,6 +552,7 @@ async def authenticate_human(
             session.add(existing_human)
             session.commit()
 
+        _link_pending_attendees_after_auth(session, existing_human)
         logger.info(f"Human authenticated successfully: {email}")
         return existing_human
 
@@ -627,17 +650,7 @@ async def authenticate_human(
         session.commit()
         session.refresh(human)
 
-    # Link any existing attendees with matching email to this new human
-    from app.api.attendee.crud import attendees_crud
-
-    linked_count = attendees_crud.link_attendees_to_human(
-        session,
-        human_id=human.id,
-        email=human.email,
-        tenant_id=human.tenant_id,
-    )
-    if linked_count > 0:
-        logger.info(f"Linked {linked_count} existing attendee(s) to new human: {email}")
+    _link_pending_attendees_after_auth(session, human)
 
     # Whitelist auto-join: if this email was whitelisted to any group (e.g. a
     # leader invited it before signup), add the new human to those groups.
