@@ -14,6 +14,10 @@ import uuid
 from fastapi.testclient import TestClient
 from sqlmodel import Session, func, select
 
+from app.api.audit_log.models import AuditLog
+from app.api.base_field_config.models import BaseFieldConfigs
+from app.api.form_field.models import FormFields
+from app.api.form_section.models import FormSections
 from app.api.popup.models import Popups
 from app.api.sales_flow.models import SalesFlows
 from app.api.sales_flow.schemas import SalesFlowType
@@ -95,11 +99,52 @@ class TestOurOwnConfigurationDoesNotBlock:
         flow = _flow_with_steps(db, popup, SalesFlowType.upsale.value)
         flow_id = flow.id
         assert _count(db, TicketingSteps, flow_id) > 0
+        section = FormSections(
+            tenant_id=tenant_a.id,
+            popup_id=popup.id,
+            sales_flow_id=flow_id,
+            label="Additional Details",
+            order=0,
+        )
+        db.add(section)
+        db.add(
+            FormFields(
+                tenant_id=tenant_a.id,
+                popup_id=popup.id,
+                sales_flow_id=flow_id,
+                section_id=section.id,
+                name="additional_detail",
+                label="Additional detail",
+                field_type="text",
+            )
+        )
+        db.add(
+            BaseFieldConfigs(
+                tenant_id=tenant_a.id,
+                popup_id=popup.id,
+                sales_flow_id=flow_id,
+                field_name="referral",
+                section_id=section.id,
+            )
+        )
+        db.commit()
 
         resp = _delete(client, admin_token_tenant_a, flow)
 
         assert resp.status_code == 204, resp.text
         assert not _flow_exists(db, flow_id)
+        audit = db.exec(
+            select(AuditLog).where(
+                AuditLog.action == "sales_flow.deleted",
+                AuditLog.entity_id == flow_id,
+            )
+        ).one()
+        assert audit.details is not None
+        assert audit.details["deleted_configuration"] == {
+            "sections": 1,
+            "custom_fields": 1,
+            "base_fields": 1,
+        }
 
     def test_its_steps_go_with_it(
         self,

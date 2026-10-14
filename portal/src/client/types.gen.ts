@@ -4948,6 +4948,7 @@ export type PaymentProductUnitResponse = {
     check_in_code: string;
     active: boolean;
     requires_check_in: boolean;
+    last_scan_at?: (string | null);
 };
 
 /**

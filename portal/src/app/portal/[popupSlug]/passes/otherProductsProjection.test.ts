@@ -14,18 +14,24 @@ const payment = (
   ...overrides,
 })
 
-const shirtOrigin = { category: "merch", salesFlowId: "direct-flow" }
+type Unit = {
+  id: string
+  attendee_id?: string | null
+  check_in_code: string
+  active: boolean
+  requires_check_in: boolean
+  last_scan_at?: string | null
+}
 
-const product = (
-  productId: string,
-  units?: Array<{
-    id: string
-    attendee_id?: string | null
-    check_in_code: string
-    active: boolean
-    requires_check_in: boolean
-  }>,
-) => ({
+const unit = (id: string, overrides: Partial<Unit> = {}): Unit => ({
+  id,
+  check_in_code: `code-${id}`,
+  active: true,
+  requires_check_in: true,
+  ...overrides,
+})
+
+const product = (productId: string, units?: Unit[]) => ({
   product_id: productId,
   attendee_id: null,
   product_name: productId === "shirt" ? "Event shirt" : "Weekend pass",
@@ -37,27 +43,22 @@ const product = (
   created_at: "2026-09-11T12:00:00Z",
 })
 
+const shirtRow = {
+  id: "shirt",
+  name: "Event shirt",
+  category: "merch",
+  salesFlowId: "direct-flow",
+}
+
 describe("projectOtherPurchasedProducts", () => {
   it("keeps approved non-application products not already visible as passes", () => {
     const result = projectOtherPurchasedProducts(
       [
         payment({
           products_snapshot: [
-            product("weekend-pass", [
-              {
-                id: "visible-ticket",
-                check_in_code: "ticket-code",
-                active: true,
-                requires_check_in: true,
-              },
-            ]),
+            product("weekend-pass", [unit("visible-ticket")]),
             product("shirt", [
-              {
-                id: "ownerless-shirt",
-                check_in_code: "shirt-code",
-                active: true,
-                requires_check_in: false,
-              },
+              unit("ownerless-shirt", { requires_check_in: false }),
             ]),
           ],
         }),
@@ -73,7 +74,14 @@ describe("projectOtherPurchasedProducts", () => {
     )
 
     expect(result).toEqual([
-      { id: "shirt", name: "Event shirt", quantity: 1, ...shirtOrigin },
+      {
+        ...shirtRow,
+        key: "ownerless-shirt",
+        checkInCode: null,
+        lastScanAt: null,
+        number: 1,
+        total: 1,
+      },
     ])
   })
 
@@ -109,29 +117,52 @@ describe("projectOtherPurchasedProducts", () => {
     expect(result).toEqual([])
   })
 
-  it("aggregates active quantities across payments", () => {
+  it("gives every active unit its own numbered row, across payments", () => {
     const result = projectOtherPurchasedProducts(
       [
         payment({
           id: "payment-1",
-          products_snapshot: [product("shirt")],
+          products_snapshot: [
+            product("shirt", [
+              unit("a"),
+              unit("revoked", { active: false }),
+              unit("not-scannable", { requires_check_in: false }),
+              unit("no-code", { check_in_code: "" }),
+            ]),
+          ],
         }),
         payment({
           id: "payment-2",
+          products_snapshot: [product("shirt", [unit("b")])],
+        }),
+      ],
+      new Set(),
+      [],
+    )
+
+    expect(
+      result.map(({ key, checkInCode, number, total }) => ({
+        key,
+        checkInCode,
+        number,
+        total,
+      })),
+    ).toEqual([
+      { key: "a", checkInCode: "code-a", number: 1, total: 4 },
+      { key: "not-scannable", checkInCode: null, number: 2, total: 4 },
+      { key: "no-code", checkInCode: null, number: 3, total: 4 },
+      { key: "b", checkInCode: "code-b", number: 4, total: 4 },
+    ])
+  })
+
+  it("moves used QRs to the end and keeps their scan time", () => {
+    const result = projectOtherPurchasedProducts(
+      [
+        payment({
           products_snapshot: [
             product("shirt", [
-              {
-                id: "shirt-1",
-                check_in_code: "code-1",
-                active: true,
-                requires_check_in: false,
-              },
-              {
-                id: "shirt-2",
-                check_in_code: "code-2",
-                active: false,
-                requires_check_in: false,
-              },
+              unit("picked-up", { last_scan_at: "2026-10-12T15:00:00Z" }),
+              unit("waiting"),
             ]),
           ],
         }),
@@ -140,22 +171,23 @@ describe("projectOtherPurchasedProducts", () => {
       [],
     )
 
-    expect(result).toEqual([
-      { id: "shirt", name: "Event shirt", quantity: 2, ...shirtOrigin },
+    expect(
+      result.map(({ key, number, lastScanAt }) => ({
+        key,
+        number,
+        lastScanAt,
+      })),
+    ).toEqual([
+      { key: "waiting", number: 2, lastScanAt: null },
+      { key: "picked-up", number: 1, lastScanAt: "2026-10-12T15:00:00Z" },
     ])
   })
 
-  it("falls back to snapshot quantities when operational units are unavailable", () => {
+  it("splits legacy lines without units into one row per quantity", () => {
     const result = projectOtherPurchasedProducts(
       [
         payment({
-          products_snapshot: [
-            {
-              ...product("shirt"),
-              quantity: 2,
-              units: [],
-            },
-          ],
+          products_snapshot: [{ ...product("shirt"), quantity: 3, units: [] }],
         }),
       ],
       new Set(),
@@ -169,7 +201,22 @@ describe("projectOtherPurchasedProducts", () => {
     )
 
     expect(result).toEqual([
-      { id: "shirt", name: "Event shirt", quantity: 1, ...shirtOrigin },
+      {
+        ...shirtRow,
+        key: "payment-1:shirt:0",
+        checkInCode: null,
+        lastScanAt: null,
+        number: 1,
+        total: 2,
+      },
+      {
+        ...shirtRow,
+        key: "payment-1:shirt:1",
+        checkInCode: null,
+        lastScanAt: null,
+        number: 2,
+        total: 2,
+      },
     ])
   })
 })

@@ -89,8 +89,8 @@ describe("OrdersContent product QR", () => {
 
     const buttons = screen.getAllByRole("button", { name: /View QR for/ })
     expect(buttons).toHaveLength(2)
-    expect(buttons[0].textContent).toContain("View QR 1")
-    expect(buttons[1].textContent).toContain("View QR 2")
+    // Icon-only, like the QR on Purchases: the label lives in aria-label.
+    expect(buttons.map((button) => button.textContent)).toEqual(["", ""])
     expect(screen.queryByRole("dialog")).toBeNull()
 
     fireEvent.click(buttons[1])

@@ -75,6 +75,7 @@ def test_ownerless_buyer_notifications_and_order_projection(client, db, tenant_a
             "check_in_code": unit.check_in_code,
             "active": True,
             "requires_check_in": True,
+            "last_scan_at": None,
         }
     ]
     email_service = _mock_email_service()

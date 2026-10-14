@@ -109,6 +109,7 @@ async def create_form_section(
     section_in: FormSectionCreate,
     db: AdminOrApiKeySession_FormsWrite,
     current_user: AdminOrApiKey_FormsWrite,
+    token_payload: CallerToken,
 ) -> FormSectionPublic:
     from app.api.popup.crud import popups_crud
     from app.api.sales_flow.resolver import config_for  # noqa: PLC0415
@@ -167,6 +168,33 @@ async def create_form_section(
     section = FormSections(**section_data)
 
     db.add(section)
+    from app.api.audit_log.actor import actor_from_user_or_api_key
+    from app.api.audit_log.constants import AuditAction, AuditEntityType
+    from app.api.audit_log.crud import audit_logs_crud
+
+    audit_logs_crud.record(
+        db,
+        tenant_id=tenant_id,
+        actor=actor_from_user_or_api_key(
+            current_user, api_key_id=token_payload.api_key_id
+        ),
+        action=AuditAction.FORM_SECTION_CREATED,
+        entity_type=AuditEntityType.FORM_SECTION,
+        entity_id=section.id,
+        entity_label=section.label,
+        popup_id=section.popup_id,
+        details={
+            "sales_flow_id": str(section.sales_flow_id),
+            "kind": section.kind,
+            "order": section.order,
+            "protected": section.protected,
+            "hidden": section.hidden,
+            "auth": {
+                "via_api_key": token_payload.via_api_key,
+                "api_key_id": token_payload.api_key_id,
+            },
+        },
+    )
     db.commit()
     db.refresh(section)
 
@@ -212,6 +240,47 @@ async def update_form_section(
             get_request_id(),
         )
 
+    update_data = section_in.model_dump(exclude_unset=True)
+    changes: dict[str, dict[str, object]] = {}
+    for field in ("label", "order", "hidden", "protected"):
+        if field in update_data:
+            old_value = getattr(section, field)
+            new_value = update_data[field]
+            if old_value != new_value:
+                changes[field] = {"from": old_value, "to": new_value}
+    if (
+        "description" in update_data
+        and section.description != update_data["description"]
+    ):
+        changes["description"] = {"changed": True}
+
+    if changes:
+        from app.api.audit_log.actor import actor_from_user_or_api_key
+        from app.api.audit_log.constants import AuditAction, AuditEntityType
+        from app.api.audit_log.crud import audit_logs_crud
+
+        audit_logs_crud.record(
+            db,
+            tenant_id=section.tenant_id,
+            actor=actor_from_user_or_api_key(
+                current_user, api_key_id=token_payload.api_key_id
+            ),
+            action=AuditAction.FORM_SECTION_UPDATED,
+            entity_type=AuditEntityType.FORM_SECTION,
+            entity_id=section.id,
+            entity_label=section.label,
+            popup_id=section.popup_id,
+            details={
+                "sales_flow_id": str(section.sales_flow_id),
+                "kind": section.kind,
+                "changes": changes,
+                "auth": {
+                    "via_api_key": token_payload.via_api_key,
+                    "api_key_id": token_payload.api_key_id,
+                },
+            },
+        )
+
     updated = crud.form_sections_crud.update(db, section, section_in)
     return FormSectionPublic.model_validate(updated)
 
@@ -249,6 +318,31 @@ async def delete_form_section(
             token_payload.api_key_id,
             get_request_id(),
         )
+        from app.api.audit_log.actor import actor_from_user_or_api_key
+        from app.api.audit_log.constants import AuditAction, AuditEntityType
+        from app.api.audit_log.crud import audit_logs_crud
+
+        audit_logs_crud.record_best_effort(
+            db,
+            tenant_id=section.tenant_id,
+            actor=actor_from_user_or_api_key(
+                current_user, api_key_id=token_payload.api_key_id
+            ),
+            action=AuditAction.FORM_SECTION_DELETE_REJECTED,
+            entity_type=AuditEntityType.FORM_SECTION,
+            entity_id=section.id,
+            entity_label=section.label,
+            popup_id=section.popup_id,
+            details={
+                "sales_flow_id": str(section.sales_flow_id),
+                "kind": section.kind,
+                "protected": section.protected,
+                "auth": {
+                    "via_api_key": token_payload.via_api_key,
+                    "api_key_id": token_payload.api_key_id,
+                },
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete a protected section",
@@ -283,6 +377,34 @@ async def delete_form_section(
         token_payload.via_api_key,
         token_payload.api_key_id,
         get_request_id(),
+    )
+
+    from app.api.audit_log.actor import actor_from_user_or_api_key
+    from app.api.audit_log.constants import AuditAction, AuditEntityType
+    from app.api.audit_log.crud import audit_logs_crud
+
+    audit_logs_crud.record(
+        db,
+        tenant_id=section.tenant_id,
+        actor=actor_from_user_or_api_key(
+            current_user, api_key_id=token_payload.api_key_id
+        ),
+        action=AuditAction.FORM_SECTION_DELETED,
+        entity_type=AuditEntityType.FORM_SECTION,
+        entity_id=section.id,
+        entity_label=section.label,
+        popup_id=section.popup_id,
+        details={
+            "sales_flow_id": str(section.sales_flow_id),
+            "kind": section.kind,
+            "protected": section.protected,
+            "custom_fields_unsectioned": custom_field_count,
+            "base_fields_unsectioned": base_field_count,
+            "auth": {
+                "via_api_key": token_payload.via_api_key,
+                "api_key_id": token_payload.api_key_id,
+            },
+        },
     )
 
     delete_translations_for_entity(db, "form_section", section.id)

@@ -11,6 +11,7 @@ from sqlmodel import Session, select
 
 from app.api.attendee.models import AttendeeProducts
 from app.api.audit_log.actor import actor_from_human
+from app.api.check_in.crud import get_last_scan_by_tickets
 from app.api.payment.crud import payments_crud
 from app.api.payment.models import Payments
 from app.api.payment.schemas import (
@@ -98,6 +99,7 @@ def _payment_public_with_units(
             )
             .options(selectinload(AttendeeProducts.product))  # type: ignore[arg-type]
         ).all()
+        last_scan_by_unit = get_last_scan_by_tickets(db, [unit.id for unit in units])
         for unit in units:
             units_by_line[unit.payment_product_id].append(  # type: ignore[index]
                 PaymentProductUnitResponse(
@@ -106,6 +108,7 @@ def _payment_public_with_units(
                     check_in_code=unit.check_in_code,
                     active=unit.revoked_at is None,
                     requires_check_in=unit.product.requires_check_in,
+                    last_scan_at=last_scan_by_unit.get(unit.id),
                 )
             )
 
