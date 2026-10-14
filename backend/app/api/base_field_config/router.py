@@ -10,6 +10,7 @@ from app.api.base_field_config.schemas import (
     BaseFieldConfigPublic,
     BaseFieldConfigUpdate,
 )
+from app.api.popup.guards import CallerToken
 from app.core.dependencies.users import CurrentWriter, TenantSession
 
 router = APIRouter(prefix="/base-field-configs", tags=["base-field-configs"])
@@ -30,7 +31,8 @@ async def update_base_field_config(
     config_id: uuid.UUID,
     config_in: BaseFieldConfigUpdate,
     db: TenantSession,
-    _: CurrentWriter,
+    current_user: CurrentWriter,
+    token_payload: CallerToken,
 ) -> BaseFieldConfigPublic:
     config = base_field_configs_crud.get(db, config_id)
     if not config:
@@ -39,7 +41,40 @@ async def update_base_field_config(
             detail="Base field config not found",
         )
 
-    ensure_base_field_update_allowed(config, config_in.model_dump(exclude_unset=True))
+    update_data = config_in.model_dump(exclude_unset=True)
+    ensure_base_field_update_allowed(config, update_data)
+
+    if "section_id" in update_data and config.section_id != update_data["section_id"]:
+        from app.api.audit_log.actor import actor_from_user_or_api_key
+        from app.api.audit_log.constants import AuditAction, AuditEntityType
+        from app.api.audit_log.crud import audit_logs_crud
+
+        new_section_id = update_data["section_id"]
+        audit_logs_crud.record(
+            db,
+            tenant_id=config.tenant_id,
+            actor=actor_from_user_or_api_key(
+                current_user, api_key_id=token_payload.api_key_id
+            ),
+            action=AuditAction.FORM_FIELD_SECTION_CHANGED,
+            entity_type=AuditEntityType.BASE_FIELD_CONFIG,
+            entity_id=config.id,
+            entity_label=config.field_name,
+            popup_id=config.popup_id,
+            details={
+                "sales_flow_id": str(config.sales_flow_id),
+                "field_kind": "base",
+                "field_name": config.field_name,
+                "previous_section_id": (
+                    str(config.section_id) if config.section_id else None
+                ),
+                "section_id": str(new_section_id) if new_section_id else None,
+                "auth": {
+                    "via_api_key": token_payload.via_api_key,
+                    "api_key_id": token_payload.api_key_id,
+                },
+            },
+        )
 
     updated = base_field_configs_crud.update(db, config, config_in)
     return BaseFieldConfigPublic.model_validate(updated)
