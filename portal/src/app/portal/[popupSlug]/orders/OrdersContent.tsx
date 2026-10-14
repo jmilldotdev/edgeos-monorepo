@@ -174,28 +174,29 @@ export function OrdersContent({
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-2">
                       <p>{formattedAmount(line.unitPrice, line.currency)}</p>
-                      {line.units.map((unit, index) => (
-                        <Button
-                          key={unit.id}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          aria-label={t("orders.show_unit_qr_label", {
-                            product: line.name,
-                            number: index + 1,
-                          })}
-                          onClick={() =>
-                            setSelectedUnit({
-                              orderId: order.id,
-                              unitId: unit.id,
-                            })
-                          }
-                        >
-                          <QrCode className="size-4" />
-                          {t("orders.show_unit_qr")}
-                          {line.units.length > 1 && ` ${index + 1}`}
-                        </Button>
-                      ))}
+                      {line.units.length > 0 && (
+                        <div className="flex flex-wrap justify-end gap-2">
+                          {line.units.map((unit, index) => (
+                            <button
+                              key={unit.id}
+                              type="button"
+                              aria-label={t("orders.show_unit_qr_label", {
+                                product: line.name,
+                                number: index + 1,
+                              })}
+                              onClick={() =>
+                                setSelectedUnit({
+                                  orderId: order.id,
+                                  unitId: unit.id,
+                                })
+                              }
+                              className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              <QrCode className="size-5" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </li>
                 ))}

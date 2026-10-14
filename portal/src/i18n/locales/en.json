@@ -102,7 +102,6 @@
     "definitive_total": "Total"
   },
   "orders": {
-    "show_unit_qr": "View QR",
     "show_unit_qr_label": "View QR for {{product}}, unit {{number}}",
     "unit_qr_title": "{{product}} · QR {{number}}",
     "unit_qr_description": "Show this QR to the operator for this item.",
@@ -649,6 +648,9 @@
     "other_passes": "Other passes",
     "other_products": "Other products",
     "other_products_description": "Additional items you've purchased for this event.",
+    "other_product_position": "{{number}} of {{total}}",
+    "other_product_ready": "Ready to use",
+    "other_product_used": "Used",
     "view_payment_details": "View payment details",
     "companion_attending": "You are attending as a companion.",
     "companion_attending_city": "You are attending {{city}} as a companion.",

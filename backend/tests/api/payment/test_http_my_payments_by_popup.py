@@ -14,6 +14,7 @@ Spec scenarios:
 """
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -22,6 +23,7 @@ from sqlmodel import Session
 from app.api.application.models import Applications
 from app.api.application.schemas import ApplicationStatus
 from app.api.attendee.models import AttendeeProducts, Attendees
+from app.api.check_in.models import CheckIn
 from app.api.human.models import Humans
 from app.api.payment.models import PaymentProducts, Payments
 from app.api.payment.schemas import PaymentStatus
@@ -264,6 +266,55 @@ class TestListMyPaymentsByPopupHttp:
         result = response.json()["results"][0]
         assert result["id"] == str(payment.id)
         assert result["products_snapshot"][0]["units"] == []
+
+    def test_buyer_units_report_their_last_scan(
+        self, client: TestClient, db: Session, tenant_a: Tenants
+    ) -> None:
+        popup = _make_popup(db, tenant_a, suffix="unit-last-scan")
+        buyer = _make_human(db, tenant_a, suffix="scan-buyer")
+        payment = _make_direct_payment(db, tenant_a, popup, buyer)
+        payment.buyer_human_id = buyer.id
+        line = payment.products_snapshot[0]
+        scanned, unused = (
+            AttendeeProducts(
+                tenant_id=tenant_a.id,
+                attendee_id=None,
+                product_id=line.product_id,
+                payment_id=payment.id,
+                payment_product_id=line.id,
+                unit_index=index,
+                check_in_code=f"SCAN{index}{uuid.uuid4().hex[:4].upper()}",
+                product_category_snapshot="merch",
+                requires_check_in_snapshot=True,
+            )
+            for index in range(2)
+        )
+        db.add_all([payment, scanned, unused])
+        db.commit()
+        first = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
+        for occurred_at in (first, first + timedelta(hours=1)):
+            db.add(
+                CheckIn(
+                    tenant_id=tenant_a.id,
+                    attendee_product_id=scanned.id,
+                    popup_id=popup.id,
+                    occurred_at=occurred_at,
+                    payload={"source": "qr"},
+                )
+            )
+        db.commit()
+
+        response = client.get(_payments_url(popup.id), headers=_auth(buyer))
+
+        assert response.status_code == 200, response.text
+        units = {
+            unit["id"]: unit
+            for unit in response.json()["results"][0]["products_snapshot"][0]["units"]
+        }
+        assert datetime.fromisoformat(units[str(scanned.id)]["last_scan_at"]) == (
+            first + timedelta(hours=1)
+        )
+        assert units[str(unused.id)]["last_scan_at"] is None
 
     def test_legacy_status_and_non_ticket_snapshot_remain_visible(
         self, client: TestClient, db: Session, tenant_a: Tenants
