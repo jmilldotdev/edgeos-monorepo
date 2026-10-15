@@ -73,16 +73,25 @@ describe("checkout email verification", () => {
     act(() => result.current.setVerificationCode("123456"))
     await waitFor(() => expect(result.current.verificationError).toBeTruthy())
     act(() => result.current.setVerificationCode("654321"))
-    await waitFor(() => expect(authenticate).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(authenticate).toHaveBeenCalledTimes(2)
+      expect(result.current.isVerifyingCode).toBe(false)
+    })
     act(() => result.current.setVerificationCode("65432"))
     act(() => result.current.setVerificationCode("654321"))
-    await waitFor(() => expect(authenticate).toHaveBeenCalledTimes(3))
+    await waitFor(() => {
+      expect(authenticate).toHaveBeenCalledTimes(3)
+      expect(result.current.isVerifyingCode).toBe(false)
+    })
 
     await act(async () => {
       await result.current.handleResendCode()
     })
     act(() => result.current.setVerificationCode("654321"))
-    await waitFor(() => expect(authenticate).toHaveBeenCalledTimes(4))
+    await waitFor(() => {
+      expect(authenticate).toHaveBeenCalledTimes(4)
+      expect(result.current.isVerifyingCode).toBe(false)
+    })
   })
 
   it("deduplicates simultaneous submissions and completes successful sign-in", async () => {
