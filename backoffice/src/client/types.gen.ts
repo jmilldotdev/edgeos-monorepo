@@ -6061,6 +6061,22 @@ export type RuleActivity = 'attend' | 'host';
 export type RuleMeasure = 'count' | 'distinct_days' | 'streak_days';
 
 /**
+ * Display settings for the selected application, including its own fee.
+ */
+export type SalesFlowApplicationEntryPublic = {
+    id: string;
+    slug: string;
+    name: string;
+    order: number;
+    type: SalesFlowType;
+    price_summary?: (SalesFlowPriceSummary | null);
+    theme_config?: (SalesFlowPortalThemeConfig | null);
+    requires_application_fee: boolean;
+    application_fee_amount: (string | null);
+    application_layout: ApplicationLayout;
+};
+
+/**
  * What a door's checkout screen needs to know about its own settings.
  *
  * The portal used to read these off `PopupPublic`, whose columns stopped
@@ -10705,6 +10721,13 @@ export type SalesFlowsListPortalSalesFlowsData = {
 };
 
 export type SalesFlowsListPortalSalesFlowsResponse = (ListModel_SalesFlowPortalPublic_);
+
+export type SalesFlowsResolvePortalApplicationFlowData = {
+    identifier: string;
+    popupId: string;
+};
+
+export type SalesFlowsResolvePortalApplicationFlowResponse = (SalesFlowApplicationEntryPublic);
 
 export type SalesFlowsListPortalUpsaleFlowsData = {
     popupId: string;

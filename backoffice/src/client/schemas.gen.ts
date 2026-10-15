@@ -29554,6 +29554,74 @@ export const SaleTypeSchema = {
 Enum is extensible for future types (e.g. waitlist, lottery, registration).`
 } as const;
 
+export const SalesFlowApplicationEntryPublicSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            format: 'uuid',
+            title: 'Id'
+        },
+        slug: {
+            type: 'string',
+            title: 'Slug'
+        },
+        name: {
+            type: 'string',
+            title: 'Name'
+        },
+        order: {
+            type: 'integer',
+            title: 'Order'
+        },
+        type: {
+            '$ref': '#/components/schemas/SalesFlowType'
+        },
+        price_summary: {
+            anyOf: [
+                {
+                    '$ref': '#/components/schemas/SalesFlowPriceSummary'
+                },
+                {
+                    type: 'null'
+                }
+            ]
+        },
+        theme_config: {
+            anyOf: [
+                {
+                    '$ref': '#/components/schemas/SalesFlowPortalThemeConfig'
+                },
+                {
+                    type: 'null'
+                }
+            ]
+        },
+        requires_application_fee: {
+            type: 'boolean',
+            title: 'Requires Application Fee'
+        },
+        application_fee_amount: {
+            anyOf: [
+                {
+                    type: 'string',
+                    pattern: '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Application Fee Amount'
+        },
+        application_layout: {
+            '$ref': '#/components/schemas/ApplicationLayout'
+        }
+    },
+    type: 'object',
+    required: ['id', 'slug', 'name', 'order', 'type', 'requires_application_fee', 'application_fee_amount', 'application_layout'],
+    title: 'SalesFlowApplicationEntryPublic',
+    description: 'Display settings for the selected application, including its own fee.'
+} as const;
+
 export const SalesFlowCheckoutConfigSchema = {
     properties: {
         allows_coupons: {
