@@ -154,7 +154,7 @@ function makeStep(
     title: overrides.step_type,
     description: null,
     order: 0,
-    is_enabled: true,
+    is_enabled: overrides.is_enabled ?? true,
     protected: false,
     product_category: overrides.product_category ?? null,
     template: overrides.template ?? null,
@@ -202,6 +202,36 @@ function makeWrapper(
 }
 
 describe("checkoutProvider session identity", () => {
+  it("ignores disabled form requirements and restores them when the step is enabled", () => {
+    const buyerStep = makeStep({
+      id: "buyer-form",
+      step_type: "buyer",
+      is_enabled: false,
+    })
+    const schema: ApplicationFormSchema = {
+      base_fields: { email: { type: "email", label: "Email", required: true } },
+      custom_fields: {
+        location: { type: "text", label: "Location", required: true },
+      },
+      sections: [],
+    }
+    const { result, rerender } = renderHook(() => useCheckout(), {
+      wrapper: makeWrapper([buyerStep], [], {
+        buyerFormSchema: schema,
+        initialBuyerValues: { email: "buyer@example.com" },
+      }),
+    })
+    expect(result.current.isBuyerInfoComplete).toBe(true)
+    expect(result.current.getBuyerInvalidFields()).toEqual([])
+    buyerStep.is_enabled = true
+    rerender()
+    expect(result.current.isBuyerInfoComplete).toBe(false)
+    expect(result.current.getBuyerInvalidFields()).toEqual(["custom_location"])
+    act(() => result.current.setBuyerField("custom_location", "Test location"))
+    expect(result.current.isBuyerInfoComplete).toBe(true)
+    expect(schema.custom_fields.location.required).toBe(true)
+  })
+
   it("merges late session data without losing custom answers or payment identity", () => {
     const props: Partial<ComponentProps<typeof CheckoutProvider>> = {
       submitMode: "open-ticketing",

@@ -52,6 +52,7 @@ import { useStepProductResolver } from "@/hooks/checkout/useStepProductResolver"
 import useGetPassesData from "@/hooks/useGetPassesData"
 import { useIsAuthenticated } from "@/hooks/useIsAuthenticated"
 import { firstIncompleteStay } from "@/lib/accommodationForm"
+import { buyerFormValidationSchema } from "@/lib/buyerFormValidation"
 import { type BuyerIdentity, buildBuyerIdentity } from "@/lib/buyerIdentity"
 import { buildFormZodSchema } from "@/lib/form-schema-builder"
 import { trackGAAddToCart } from "@/lib/google-analytics"
@@ -490,6 +491,12 @@ export function CheckoutProvider({
   // config said. It is a real step now, added from the backoffice like any
   // other — a popup without one collects no buyer info.
   const configuredSteps = configuredStepsOverride ?? stepsData?.results ?? []
+  const buyerValidationSchema = buyerFormValidationSchema(
+    buyerFormSchema,
+    configuredSteps.some(
+      (step) => step.step_type === "buyer" && step.is_enabled,
+    ),
+  )
 
   // Whether the accommodation step collects a name per guest. Read here as
   // well as in the step itself because the pay-time gate has to apply the
@@ -502,8 +509,9 @@ export function CheckoutProvider({
     )?.require_guest_names !== false
 
   const isBuyerInfoComplete =
-    !buyerFormSchema ||
-    buildFormZodSchema(buyerFormSchema, false).safeParse(buyerValues).success
+    !buyerValidationSchema ||
+    buildFormZodSchema(buyerValidationSchema, false).safeParse(buyerValues)
+      .success
 
   /**
    * Who is buying, so nothing asks them for it twice.
@@ -528,8 +536,8 @@ export function CheckoutProvider({
   // Returns the names of buyer-form fields that fail the current schema.
   // Returns [] when complete or when no schema is configured.
   const getBuyerInvalidFields = useCallback((): string[] => {
-    if (!buyerFormSchema) return []
-    const result = buildFormZodSchema(buyerFormSchema, false).safeParse(
+    if (!buyerValidationSchema) return []
+    const result = buildFormZodSchema(buyerValidationSchema, false).safeParse(
       buyerValues,
     )
     if (result.success) return []
@@ -542,7 +550,7 @@ export function CheckoutProvider({
       if (fieldName) seen.add(fieldName)
     }
     return Array.from(seen)
-  }, [buyerFormSchema, buyerValues])
+  }, [buyerValidationSchema, buyerValues])
 
   // True while checkout settings, step configs or products are initially loading.
   // Why: when both queries are pending, availableSteps falls back to
