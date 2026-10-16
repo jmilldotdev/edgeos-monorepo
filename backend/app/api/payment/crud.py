@@ -957,8 +957,9 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
         popup: "Popups",
         form_data: dict[str, Any],
         attribution: dict[str, Any] | None = None,
+        sales_flow_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
-        """Build immutable buyer snapshot JSONB for open ticketing payments.
+        """Capture purchase-time labels and answer values for checkout payments.
 
         ``attribution`` carries the marketing params captured from the checkout
         entry URL (utm_*, fbclid, landing_segment, anonymous_id). Stored under a
@@ -968,7 +969,12 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
         sections_snapshot: list[dict[str, Any]] = []
 
         ordered_sections = sorted(
-            [section for section in popup.form_sections if section.kind == "standard"],
+            [
+                section
+                for section in popup.form_sections
+                if section.kind == "standard"
+                and (sales_flow_id is None or section.sales_flow_id == sales_flow_id)
+            ],
             key=lambda section: section.order,
         )
 
@@ -994,6 +1000,34 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
                     "section_label": section.label,
                     "section_order": section.order,
                     "fields": fields_snapshot,
+                }
+            )
+
+        unsectioned = sorted(
+            [
+                field
+                for field in popup.form_fields
+                if field.section_id is None
+                and (sales_flow_id is None or field.sales_flow_id == sales_flow_id)
+            ],
+            key=lambda field: field.position,
+        )
+        if unsectioned:
+            sections_snapshot.append(
+                {
+                    "section_id": None,
+                    "section_label": "Form details",
+                    "section_order": len(sections_snapshot),
+                    "fields": [
+                        {
+                            "field_id": str(f.id),
+                            "field_name": f.name,
+                            "field_label": f.label,
+                            "field_type": f.field_type,
+                            "value": form_data.get(f.name),
+                        }
+                        for f in unsectioned
+                    ],
                 }
             )
 
@@ -1231,6 +1265,7 @@ class PaymentsCRUD(BaseCRUD[Payments, PaymentCreate, PaymentUpdate]):
         buyer_snapshot = self._build_buyer_snapshot(
             popup,
             obj.buyer.form_data,
+            sales_flow_id=target_flow.id,
             attribution=(
                 obj.attribution.model_dump(exclude_none=True)
                 if obj.attribution

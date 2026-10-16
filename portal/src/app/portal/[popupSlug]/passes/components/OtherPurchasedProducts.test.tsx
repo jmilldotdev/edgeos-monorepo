@@ -25,6 +25,12 @@ vi.mock("react-i18next", () => ({
   }),
 }))
 
+vi.mock("@/components/payments/PaymentFormResponses", () => ({
+  PaymentFormResponses: ({ paymentId }: { paymentId: string }) => (
+    <div data-testid="response-payment">{paymentId}</div>
+  ),
+}))
+
 vi.mock("@/client", () => ({
   TicketingStepsService: {
     listPortalTicketingSteps: vi.fn(async () => ({ results: [] })),
@@ -81,6 +87,33 @@ function renderProducts(products: OtherPurchasedProduct[]) {
 afterEach(cleanup)
 
 describe("OtherPurchasedProducts", () => {
+  it("opens the answers of the selected order even when it has no QR", () => {
+    renderProducts([
+      shirt({
+        key: "lunch-1",
+        name: "Lunch Week 2",
+        checkInCode: null,
+        paymentId: "payment-1",
+      }),
+      shirt({
+        key: "lunch-2",
+        name: "Lunch Week 3",
+        checkInCode: null,
+        paymentId: "payment-2",
+      }),
+    ])
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "View purchase details for Lunch Week 3",
+      }),
+    )
+    const dialog = screen.getByRole("dialog", { name: "Lunch Week 3" })
+    expect(within(dialog).getByTestId("response-payment").textContent).toBe(
+      "payment-2",
+    )
+    expect(screen.queryByTestId("qr-payload")).toBeNull()
+  })
+
   it("gives each unit its own row and opens that unit's QR", () => {
     renderProducts(twoShirts)
 

@@ -3623,6 +3623,32 @@ export type FormFieldUpdate = {
     width?: ('full' | 'half' | 'half_row' | null);
 };
 
+export type FormResponseChangePublic = {
+    field_id: string;
+    field_label: string;
+    old_value: unknown;
+    new_value: unknown;
+    changed_by_human_id: string;
+    changed_at: string;
+    version: number;
+};
+
+export type FormResponseEdit = {
+    version: number;
+    answers: {
+        [key: string]: unknown;
+    };
+};
+
+export type FormResponseFieldPublic = {
+    id: string;
+    value: unknown;
+    editable: boolean;
+    definition: {
+        [key: string]: unknown;
+    };
+};
+
 export type FormSectionCreate = {
     popup_id: string;
     sales_flow_id: string;
@@ -4833,6 +4859,17 @@ export type PaymentCreate = {
     return_context?: 'direct' | 'portal';
 };
 
+export type PaymentFormResponsesPublic = {
+    version: number;
+    title: string;
+    can_edit: boolean;
+    editing_enabled: boolean;
+    deadline: (string | null);
+    timezone: string;
+    fields: Array<FormResponseFieldPublic>;
+    history: Array<FormResponseChangePublic>;
+};
+
 /**
  * Human-facing payment response without internal recipient metadata.
  */
@@ -4853,6 +4890,7 @@ export type PaymentPortalPublic = {
     rate?: (string | null);
     source?: (string | null);
     checkout_url?: (string | null);
+    form_response_version?: number;
     buyer_snapshot?: ({
     [key: string]: unknown;
 } | null);
@@ -4978,6 +5016,7 @@ export type PaymentPublic = {
     rate?: (string | null);
     source?: (string | null);
     checkout_url?: (string | null);
+    form_response_version?: number;
     buyer_snapshot?: ({
     [key: string]: unknown;
 } | null);
@@ -6877,7 +6916,7 @@ export type ThirdPartyAppCreate = {
     sso_start_url?: (string | null);
     sso_redirect_uri?: (string | null);
     name: string;
-    allowed_token_scopes?: Array<('portal:*' | 'portal:profile:read' | 'portal:profile:write' | 'portal:applications:read' | 'portal:applications:write' | 'portal:attendees:write' | 'portal:payments:read' | 'portal:directory:read' | 'portal:api_keys:manage' | 'portal:badges:write')>;
+    allowed_token_scopes?: Array<('portal:*' | 'portal:profile:read' | 'portal:profile:write' | 'portal:applications:read' | 'portal:applications:write' | 'portal:attendees:write' | 'portal:payments:read' | 'portal:payments:write' | 'portal:directory:read' | 'portal:api_keys:manage' | 'portal:badges:write')>;
     allowed_api_key_scopes?: Array<('events:read' | 'events:write' | 'rsvp:write' | 'venues:read' | 'venues:write' | 'applications:read' | 'applications:write' | 'attendees:read' | 'attendees:write' | 'humans:read' | 'humans:write' | 'groups:read' | 'groups:write' | 'products:read' | 'products:write' | 'accommodations:read' | 'accommodations:write' | 'coupons:read' | 'coupons:write' | 'forms:read' | 'forms:write' | 'payments:read' | 'tracks:read' | 'tracks:write' | 'ticketing_steps:read' | 'ticketing_steps:write' | 'translations:read' | 'translations:write' | 'badges:read' | 'badges:write')>;
 };
 
@@ -6934,7 +6973,7 @@ export type ThirdPartyAppUpdate = {
     sso_start_url?: (string | null);
     sso_redirect_uri?: (string | null);
     name?: (string | null);
-    allowed_token_scopes?: (Array<('portal:*' | 'portal:profile:read' | 'portal:profile:write' | 'portal:applications:read' | 'portal:applications:write' | 'portal:attendees:write' | 'portal:payments:read' | 'portal:directory:read' | 'portal:api_keys:manage' | 'portal:badges:write')> | null);
+    allowed_token_scopes?: (Array<('portal:*' | 'portal:profile:read' | 'portal:profile:write' | 'portal:applications:read' | 'portal:applications:write' | 'portal:attendees:write' | 'portal:payments:read' | 'portal:payments:write' | 'portal:directory:read' | 'portal:api_keys:manage' | 'portal:badges:write')> | null);
     allowed_api_key_scopes?: (Array<('events:read' | 'events:write' | 'rsvp:write' | 'venues:read' | 'venues:write' | 'applications:read' | 'applications:write' | 'attendees:read' | 'attendees:write' | 'humans:read' | 'humans:write' | 'groups:read' | 'groups:write' | 'products:read' | 'products:write' | 'accommodations:read' | 'accommodations:write' | 'coupons:read' | 'coupons:write' | 'forms:read' | 'forms:write' | 'payments:read' | 'tracks:read' | 'tracks:write' | 'ticketing_steps:read' | 'ticketing_steps:write' | 'translations:read' | 'translations:write' | 'badges:read' | 'badges:write')> | null);
 };
 
@@ -6999,6 +7038,8 @@ export type TicketAttendeeSnapshot = {
 export type TicketDuration = 'day' | 'week' | 'month' | 'full';
 
 export type TicketingStepCreate = {
+    allow_response_editing?: boolean;
+    response_edit_deadline?: (string | null);
     popup_id: string;
     sales_flow_id: string;
     step_type: string;
@@ -7028,6 +7069,8 @@ export type TicketingStepPublic = {
     description?: (string | null);
     order?: number;
     is_enabled?: boolean;
+    allow_response_editing?: boolean;
+    response_edit_deadline?: (string | null);
     protected?: boolean;
     product_category?: (string | null);
     template?: (string | null);
@@ -7042,6 +7085,8 @@ export type TicketingStepPublic = {
 };
 
 export type TicketingStepUpdate = {
+    allow_response_editing?: (boolean | null);
+    response_edit_deadline?: (string | null);
     title?: (string | null);
     description?: (string | null);
     order?: (number | null);
@@ -10320,6 +10365,26 @@ export type InvitesDeleteMyLinkData = {
 };
 
 export type InvitesDeleteMyLinkResponse = (void);
+
+export type PaymentsGetMyFormResponsesData = {
+    paymentId: string;
+};
+
+export type PaymentsGetMyFormResponsesResponse = (PaymentFormResponsesPublic);
+
+export type PaymentsEditMyFormResponsesData = {
+    paymentId: string;
+    requestBody: FormResponseEdit;
+};
+
+export type PaymentsEditMyFormResponsesResponse = (PaymentFormResponsesPublic);
+
+export type PaymentsGetPaymentFormResponsesData = {
+    paymentId: string;
+    xTenantId?: (string | null);
+};
+
+export type PaymentsGetPaymentFormResponsesResponse = (PaymentFormResponsesPublic);
 
 export type PaymentsListPaymentsData = {
     applicationId?: (string | null);
