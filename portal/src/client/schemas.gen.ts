@@ -6232,6 +6232,28 @@ export const AttendeeProductPublicSchema = {
             ],
             title: 'Duration Type'
         },
+        product_image_url: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Product Image Url'
+        },
+        product_description: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Product Description'
+        },
         last_scan_at: {
             anyOf: [
                 {
@@ -6304,6 +6326,11 @@ product_name, product_category, and duration_type are denormalized from the
 related Product at response-build time (current product state, not
 snapshot-at-purchase). All are optional with None defaults for backward
 compatibility with old clients that do not read them.
+
+product_image_url and product_description are also read from the live
+product so the portal can show a purchased ticket's detail without going
+through the product catalog, which filters out products the buyer can no
+longer purchase.
 
 last_scan_at is the most recent occurred_at from check_ins for this ticket
 (None when the ticket has never been scanned). Populated by the router from
