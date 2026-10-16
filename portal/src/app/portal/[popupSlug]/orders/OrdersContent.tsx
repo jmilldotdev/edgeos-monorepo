@@ -5,6 +5,7 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { OpenAPI, type PaymentPortalPublic } from "@/client"
+import { PaymentFormResponses } from "@/components/payments/PaymentFormResponses"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate } from "@/helpers/dates"
@@ -225,6 +226,11 @@ export function OrdersContent({
                   </Button>
                 )}
               </div>
+              {payments.find((p) => p.id === order.id)?.buyer_snapshot && (
+                <div className="sm:col-span-3">
+                  <PaymentFormResponses paymentId={order.id} />
+                </div>
+              )}
             </article>
           ))}
         </div>
