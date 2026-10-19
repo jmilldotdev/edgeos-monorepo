@@ -229,18 +229,18 @@ def _register(client: TestClient, human: Humans, event: Events, **body):
 
 
 class TestCheckInStateMachine:
-    def test_event_host_cannot_check_in_as_a_participant(
+    def test_event_host_can_check_in_as_an_eligible_participant(
         self, client: TestClient, db: Session, tenant_a: Tenants
     ) -> None:
         popup = _make_popup(db, tenant_a)
         host = _make_human(db, tenant_a)
+        _give_ticket(db, tenant_a, popup, host)
         event = _make_event(db, tenant_a, popup, host_id=host.id)
 
         response = _check_in(client, host, event)
 
-        assert response.status_code == 409, response.text
-        assert _code(response) == "event_host_cannot_attend"
-        assert _rows(db, event.id, host.id) == []
+        assert response.status_code == 200, response.text
+        assert _rows(db, event.id, host.id)[0].status == ParticipantStatus.CHECKED_IN
 
     def test_creates_participation_without_prior_rsvp(
         self, client: TestClient, db: Session, tenant_a: Tenants

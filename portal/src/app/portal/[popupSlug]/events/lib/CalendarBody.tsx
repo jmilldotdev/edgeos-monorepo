@@ -629,7 +629,6 @@ export function CalendarBody({
                       {isAuthed &&
                         showRsvp &&
                         event.status === "published" &&
-                        event.host_id !== currentHuman?.id &&
                         (() => {
                           const rsvpKey = `${event.id}:${event.start_time}`
                           const isRsvpPending = pendingRsvpKey === rsvpKey

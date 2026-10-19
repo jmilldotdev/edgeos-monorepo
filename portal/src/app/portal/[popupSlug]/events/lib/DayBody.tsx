@@ -848,7 +848,6 @@ export function DayBody({
                               showRsvp &&
                               !isShort &&
                               fullEvent.status === "published" &&
-                              fullEvent.host_id !== currentHuman?.id &&
                               (() => {
                                 const rsvpKey = `${fullEvent.id}:${fullEvent.start_time}`
                                 const isRsvpPending = pendingRsvpKey === rsvpKey

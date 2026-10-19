@@ -1404,7 +1404,6 @@
       "error_mode_locked": "此活动已有签到记录，无法关闭出席记录。",
       "error_not_found": "没有可参加的人匹配该邮箱。",
       "error_not_invited": "此人未受邀参加这个私密活动。",
-      "error_host": "活动主持人不能作为参与者签到。",
       "error_not_checked_in": "此人尚未签到。"
     }
   },

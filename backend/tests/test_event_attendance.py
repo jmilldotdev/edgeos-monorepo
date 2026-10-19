@@ -558,7 +558,7 @@ class TestManualCheckIn:
         assert _rows(db, event.id, stranger.id) == []
         assert accepted.status_code == 200, accepted.text
 
-    def test_event_host_cannot_be_marked(
+    def test_event_host_can_be_marked_when_eligible(
         self, client: TestClient, db: Session, tenant_a: Tenants
     ) -> None:
         popup = _make_popup(db, tenant_a)
@@ -575,8 +575,8 @@ class TestManualCheckIn:
 
         resp = _mark(client, owner, event, host)
 
-        assert resp.status_code == 409, resp.text
-        assert _code(resp) == "event_host_cannot_attend"
+        assert resp.status_code == 200, resp.text
+        assert _rows(db, event.id, host.id)[0].status == ParticipantStatus.CHECKED_IN
 
 
 # ---------------------------------------------------------------------------

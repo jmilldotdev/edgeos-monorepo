@@ -1572,7 +1572,6 @@
       "error_mode_locked": "Este evento ya tiene check-ins, así que no se puede desactivar la asistencia.",
       "error_not_found": "Nadie que pueda asistir coincide con ese email.",
       "error_not_invited": "Esta persona no está invitada a este evento privado.",
-      "error_host": "El host del evento no puede hacer check-in como asistente.",
       "error_not_checked_in": "Esta persona no tiene check-in."
     }
   },

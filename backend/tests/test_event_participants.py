@@ -249,7 +249,7 @@ class TestPortalAttendeeCount:
         assert str(visible.id) in profile_ids
         assert len(results) == 1
 
-    def test_event_host_is_not_counted_or_listed_as_participant(
+    def test_rsvped_host_is_counted_and_listed_as_a_participant(
         self,
         client: TestClient,
         db: Session,
@@ -282,16 +282,16 @@ class TestPortalAttendeeCount:
             headers=_human_headers(host),
         )
         assert detail.status_code == 200, detail.text
-        assert detail.json()["attendee_count"] == 1
+        assert detail.json()["attendee_count"] == 2
 
         listing = client.get(
             f"/api/v1/event-participants/portal/participants?event_id={event.id}",
             headers=_human_headers(host),
         )
         assert listing.status_code == 200, listing.text
-        assert [row["profile_id"] for row in listing.json()["results"]] == [
-            str(attendee.id)
-        ]
+        assert {row["profile_id"] for row in listing.json()["results"]} == {
+            str(attendee.id), str(host.id)
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -440,24 +440,90 @@ class TestPortalRegister:
         assert kwargs["email"] == human.email
         assert kwargs["human_id"] == human.id
 
-    def test_event_host_cannot_register_as_a_participant(
-        self,
-        client: TestClient,
-        db: Session,
-        tenant_a: Tenants,
+    def test_event_managers_can_rsvp_and_cancel_without_changing_their_role(
+        self, client: TestClient, db: Session, tenant_a: Tenants,
+    ) -> None:
+        popup = _make_popup(db, tenant_a)
+        for role in ("owner", "host", "collaborator"):
+            manager = _make_human(db, tenant_a)
+            _give_ticket(db, tenant_a, popup, manager)
+            event = _make_event(db, tenant_a, popup, max_participant=1)
+            if role == "owner":
+                event.owner_id = manager.id
+            elif role == "host":
+                event.host_id = manager.id
+            else:
+                event.collaborator_ids = [manager.id]
+            db.add(event)
+            db.commit()
+            with patch(_ITIP_TARGET, new=AsyncMock(return_value=None)):
+                registered = client.post(
+                    f"/api/v1/event-participants/portal/register/{event.id}",
+                    headers=_human_headers(manager),
+                )
+                assert registered.status_code == 200, registered.text
+                assert _fetch_participant(db, event.id, manager.id).status == ParticipantStatus.REGISTERED
+                cancelled = client.post(
+                    f"/api/v1/event-participants/portal/cancel-registration/{event.id}",
+                    headers=_human_headers(manager),
+                )
+                assert cancelled.status_code == 200, cancelled.text
+            db.refresh(event)
+            assert manager.id in {event.owner_id, event.host_id, *event.collaborator_ids}
+            assert _fetch_participant(db, event.id, manager.id).status == ParticipantStatus.CANCELLED
+
+    def test_host_still_needs_a_ticket_and_a_free_seat(
+        self, client: TestClient, db: Session, tenant_a: Tenants,
     ) -> None:
         popup = _make_popup(db, tenant_a)
         host = _make_human(db, tenant_a)
-        event = _make_event(db, tenant_a, popup, host_id=host.id)
+        attendee = _make_human(db, tenant_a)
+        event = _make_event(db, tenant_a, popup, host_id=host.id, max_participant=1)
+        url = f"/api/v1/event-participants/portal/register/{event.id}"
+        assert client.post(url, headers=_human_headers(host)).status_code == 403
+        _give_ticket(db, tenant_a, popup, host)
+        _give_ticket(db, tenant_a, popup, attendee)
+        with patch(_ITIP_TARGET, new=AsyncMock(return_value=None)):
+            assert client.post(url, headers=_human_headers(host)).status_code == 200
+            assert client.post(url, headers=_human_headers(attendee)).status_code == 409
 
+    def test_host_reassignment_does_not_remove_a_registration_or_free_a_seat(
+        self, client: TestClient, db: Session, tenant_a: Tenants,
+    ) -> None:
+        from app.api.event_participant.crud import event_participants_crud
+
+        popup = _make_popup(db, tenant_a)
+        attendee = _make_human(db, tenant_a)
+        event = _make_event(db, tenant_a, popup, max_participant=1)
+        _give_ticket(db, tenant_a, popup, attendee)
+        with patch(_ITIP_TARGET, new=AsyncMock(return_value=None)):
+            assert client.post(
+                f"/api/v1/event-participants/portal/register/{event.id}",
+                headers=_human_headers(attendee),
+            ).status_code == 200
+        for host_id in (attendee.id, None):
+            event.host_id = host_id
+            db.add(event)
+            db.commit()
+            assert event_participants_crud.count_active_for_event(db, event.id) == 1
+            assert event_participants_crud.active_profile_ids(db, event.id) == {attendee.id}
+
+    def test_private_event_registration_remains_invisible_to_an_unrelated_resident(
+        self, client: TestClient, db: Session, tenant_a: Tenants,
+    ) -> None:
+        popup = _make_popup(db, tenant_a)
+        stranger = _make_human(db, tenant_a)
+        _give_ticket(db, tenant_a, popup, stranger)
+        event = _make_event(db, tenant_a, popup)
+        event.visibility = EventVisibility.PRIVATE
+        db.add(event)
+        db.commit()
         response = client.post(
             f"/api/v1/event-participants/portal/register/{event.id}",
-            headers=_human_headers(host),
+            headers=_human_headers(stranger),
         )
-
-        assert response.status_code == 409, response.text
-        assert "host" in response.json()["detail"].lower()
-        assert _fetch_participant(db, event.id, host.id) is None
+        assert response.status_code == 404, response.text
+        assert _fetch_participant(db, event.id, stranger.id) is None
 
     def test_register_on_draft_event_rejected(
         self,

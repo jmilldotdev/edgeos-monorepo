@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import or_
 from sqlmodel import Session, col, func, select
 
 from app.api.event_participant.models import EventParticipants
@@ -76,19 +75,12 @@ class EventParticipantsCRUD(
     def active_profile_ids(
         self, session: Session, event_id: uuid.UUID
     ) -> set[uuid.UUID]:
-        from app.api.event.models import Events
-
         return set(
             session.exec(
                 select(EventParticipants.profile_id)
-                .join(Events, Events.id == EventParticipants.event_id)
                 .where(
                     EventParticipants.event_id == event_id,
                     EventParticipants.status != ParticipantStatus.CANCELLED,
-                    or_(
-                        Events.host_id.is_(None),
-                        EventParticipants.profile_id != Events.host_id,
-                    ),
                 )
             ).all()
         )
@@ -96,20 +88,16 @@ class EventParticipantsCRUD(
     def eligible_recipients(
         self, session: Session, event, occurrence_start: datetime | None = None
     ):
-        from app.api.event.models import Events
         from app.api.human.models import Humans
 
         query = (
             select(Humans)
             .join(EventParticipants, EventParticipants.profile_id == Humans.id)
-            .join(Events, Events.id == EventParticipants.event_id)
             .where(
                 EventParticipants.event_id == event.id,
                 EventParticipants.status != ParticipantStatus.CANCELLED,
             )
         )
-        if event.host_id is not None:
-            query = query.where(EventParticipants.profile_id != event.host_id)
         if occurrence_start is not None:
             query = query.where(EventParticipants.occurrence_start == occurrence_start)
         humans = list(session.exec(query.distinct()).all())
@@ -154,7 +142,6 @@ class EventParticipantsCRUD(
         limit: int = 100,
         occurrence_start: datetime | None = None,
         scope_to_occurrence: bool = False,
-        exclude_profile_id: uuid.UUID | None = None,
     ) -> tuple[list[EventParticipants], int]:
         """List participants for an event.
 
@@ -162,15 +149,11 @@ class EventParticipantsCRUD(
         ``occurrence_start`` matches exactly (or IS NULL for one-offs).
         Otherwise all rows for the event are returned (legacy behavior).
         """
-        if not scope_to_occurrence and exclude_profile_id is None:
+        if not scope_to_occurrence:
             return self.find(session, skip=skip, limit=limit, event_id=event_id)
         statement = select(EventParticipants).where(
             EventParticipants.event_id == event_id,
         )
-        if exclude_profile_id is not None:
-            statement = statement.where(
-                EventParticipants.profile_id != exclude_profile_id
-            )
         if occurrence_start is None:
             statement = statement.where(
                 EventParticipants.occurrence_start.is_(None)  # type: ignore[union-attr]
@@ -191,19 +174,12 @@ class EventParticipantsCRUD(
         event_id: uuid.UUID,
         occurrence_start: datetime | None = None,
     ) -> int:
-        from app.api.event.models import Events
-
         statement = (
             select(func.count())
             .select_from(EventParticipants)
-            .join(Events, Events.id == EventParticipants.event_id)
             .where(
                 EventParticipants.event_id == event_id,
                 EventParticipants.status != ParticipantStatus.CANCELLED,
-                or_(
-                    Events.host_id.is_(None),
-                    EventParticipants.profile_id != Events.host_id,
-                ),
             )
         )
         if occurrence_start is not None:
@@ -226,8 +202,6 @@ class EventParticipantsCRUD(
         backoffice event list so operators can see RSVP counts without opening
         each event, avoiding an N+1 of ``count_active_for_event``.
         """
-        from app.api.event.models import Events
-
         if not event_ids:
             return {}
         statement = (
@@ -236,14 +210,9 @@ class EventParticipantsCRUD(
                 EventParticipants.occurrence_start,
                 func.count().label("count"),
             )
-            .join(Events, Events.id == EventParticipants.event_id)
             .where(
                 EventParticipants.event_id.in_(event_ids),  # type: ignore[attr-defined]
                 EventParticipants.status != ParticipantStatus.CANCELLED,
-                or_(
-                    Events.host_id.is_(None),
-                    EventParticipants.profile_id != Events.host_id,
-                ),
             )
             .group_by(EventParticipants.event_id, EventParticipants.occurrence_start)
         )

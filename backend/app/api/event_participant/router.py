@@ -106,7 +106,6 @@ async def list_participants(
     Requests without either option retain the existing series-wide listing.
     """
     scoped = scope_to_occurrence or occurrence_start is not None
-    host_id = None
     if scoped:
         if event_id is None:
             raise HTTPException(400, "event_id is required for occurrence filtering")
@@ -120,7 +119,6 @@ async def list_participants(
         if not event:
             raise HTTPException(404, "Event not found")
         ensure_api_key_popup(token_payload, event.popup_id)
-        host_id = event.host_id
     if event_id:
         participants, total = crud.event_participants_crud.find_by_event(
             db,
@@ -129,7 +127,6 @@ async def list_participants(
             limit=limit,
             occurrence_start=occurrence_start,
             scope_to_occurrence=scoped,
-            exclude_profile_id=host_id,
         )
     else:
         participants, total = crud.event_participants_crud.find(
@@ -175,11 +172,6 @@ async def admin_add_participant(
     if not event:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
-        )
-    if participant_in.profile_id == event.host_id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="The event host cannot be added as a participant",
         )
 
     existing = crud.event_participants_crud.get_by_event_and_profile(
@@ -340,7 +332,6 @@ async def list_portal_participants(
         limit=limit,
         occurrence_start=occurrence_start,
         scope_to_occurrence=occurrence_start is not None,
-        exclude_profile_id=event.host_id,
     )
 
     # Privacy: drop participants who hid their name (info_not_shared) on their
@@ -406,7 +397,7 @@ async def list_portal_attendee_emails(
     active = [
         p
         for p in participants
-        if p.status != ParticipantStatus.CANCELLED and p.profile_id != event.host_id
+        if p.status != ParticipantStatus.CANCELLED
     ]
     if not active:
         return AttendeeEmailsResponse(emails=[], count=0)
@@ -455,15 +446,13 @@ async def register_for_event(
         )
     ensure_api_key_popup(token_payload, event.popup_id)
     ensure_popup_writable(popups_crud.get(db, event.popup_id))
+    from app.services.event_visibility import ensure_event_visible_to_human
+
     if event.status != EventStatus.PUBLISHED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Event is not published"
         )
-    if event.host_id == current_human.id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="The event host cannot RSVP as a participant",
-        )
+    ensure_event_visible_to_human(db, event, current_human)
 
     access = crud.event_participants_crud.eligibility_by_human(
         db, event.popup_id, {current_human.id}
@@ -712,12 +701,6 @@ async def check_in(
     # URL outlives the panel that showed it: switching the event to
     # host_rollcall or none must stop a copied link from working.
     ensure_attendance_mode(event, CheckInMethod.QR)
-    if event.host_id == current_human.id:
-        raise reject(
-            status.HTTP_409_CONFLICT,
-            "event_host_cannot_attend",
-            "Event hosts cannot check in as participants.",
-        )
 
     # 404s for a private event the caller was never invited to, so the QR
     # leaks nothing to someone who was merely forwarded the link.

@@ -254,7 +254,6 @@ export default function EventDetailPage() {
   )
 
   const canManage = !!event && canManageEvent(event, currentHuman?.id)
-  const isEventHost = !!event && event.host_id === currentHuman?.id
   // Deleting is irreversible, so only the creator gets it, not hosts or
   // collaborators. Mirrors the backend's owner-only delete.
   const isEventOwner = !!event && event.owner_id === currentHuman?.id
@@ -811,7 +810,7 @@ export default function EventDetailPage() {
             reserve the matching horizontal padding. On phones the slot would
             squeeze those rows to a sliver, so it sits in flow as its own row
             at the top of the card instead. */}
-        {event.status === "published" && !isEventHost && (
+        {event.status === "published" && (
           <div className="sm:absolute sm:top-3 sm:right-3 sm:w-60">
             <div className="flex flex-col items-start gap-1.5 sm:items-end">
               {isRsvped ? (

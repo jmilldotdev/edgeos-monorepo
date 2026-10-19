@@ -135,7 +135,7 @@ def build_roster(
 
     Cancelled participations are left out unless they carry attendance
     history (a voided walk-in), so the organizer can still see what was
-    corrected. The host is never on the list: they run the event.
+    corrected. Management roles do not change participation.
     """
     participants, _ = crud.event_participants_crud.find_by_event(
         db,
@@ -144,7 +144,6 @@ def build_roster(
         limit=_ROSTER_LIMIT,
         occurrence_start=occurrence_start,
         scope_to_occurrence=True,
-        exclude_profile_id=event.host_id,
     )
     with_history = set(
         db.exec(
@@ -220,7 +219,7 @@ def lookup_by_email(
         "attendee_not_found",
         "No one who can attend matches that email.",
     )
-    if human is None or human.id == event.host_id:
+    if human is None:
         raise not_found
 
     existing = crud.event_participants_crud.get_by_event_and_profile(
@@ -293,12 +292,6 @@ def manual_check_in(
             status.HTTP_404_NOT_FOUND,
             "attendee_not_found",
             "No one who can attend matches that person.",
-        )
-    if human.id == event.host_id:
-        raise reject(
-            status.HTTP_409_CONFLICT,
-            "event_host_cannot_attend",
-            "Event hosts cannot check in as participants.",
         )
     try:
         ensure_event_visible_to_human(db, event, human)

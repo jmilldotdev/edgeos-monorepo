@@ -314,6 +314,13 @@ The `TenantProvider` calls `/api/v1/tenants/public/{slug}` to fetch tenant metad
 | `/portal/[popupSlug]/groups/[group_id]` | Social group details |
 | `/portal/profile` | User profile settings |
 
+Event management (`owner_id`, `host_id`, `collaborator_ids`) is separate from participation.
+Managers can RSVP and cancel their own RSVP through the same portal controls and endpoints as
+other residents, subject to the ordinary ticket, visibility, capacity and attendance rules.
+Hosting alone does not create an RSVP or consume a seat; an actual manager RSVP is counted,
+listed and notified like any other registration. Changing the host does not change existing
+participation or free an occupied seat.
+
 ### Authentication
 
 - **Passwordless login** via 6-digit email codes (same as backoffice)

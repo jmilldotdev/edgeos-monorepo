@@ -37,7 +37,6 @@ const ERROR_KEYS: Record<string, string> = {
   attendance_mode_locked: "events.attendance.error_mode_locked",
   attendee_not_found: "events.attendance.error_not_found",
   attendee_not_invited: "events.attendance.error_not_invited",
-  event_host_cannot_attend: "events.attendance.error_host",
   event_not_published: "events.check_in.error_not_published",
   events_disabled: "events.check_in.error_events_disabled",
   not_checked_in: "events.attendance.error_not_checked_in",

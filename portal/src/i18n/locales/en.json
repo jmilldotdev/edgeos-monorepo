@@ -1596,7 +1596,6 @@
       "error_mode_locked": "This event already has check-ins, so attendance can't be turned off.",
       "error_not_found": "No one who can attend matches that email.",
       "error_not_invited": "This person isn't invited to this private event.",
-      "error_host": "The event host can't be checked in as an attendee.",
       "error_not_checked_in": "This person isn't checked in."
     }
   },

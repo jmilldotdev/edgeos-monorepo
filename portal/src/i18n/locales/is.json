@@ -1402,7 +1402,6 @@
       "error_mode_locked": "Þessi viðburður hefur þegar innritanir, svo ekki er hægt að slökkva á mætingu.",
       "error_not_found": "Enginn sem getur mætt passar við þetta netfang.",
       "error_not_invited": "Þessari manneskju er ekki boðið á þennan lokaða viðburð.",
-      "error_host": "Gestgjafi viðburðarins getur ekki innritað sig sem gestur.",
       "error_not_checked_in": "Þessi manneskja er ekki innrituð."
     }
   },
